@@ -14,14 +14,14 @@
     button,input,select{font:inherit}.app{max-width:720px;margin:auto;min-height:100vh;padding:env(safe-area-inset-top) 14px calc(94px + env(safe-area-inset-bottom))}
     header{position:sticky;top:0;z-index:5;background:#0c1016ef;backdrop-filter:blur(12px);padding:14px 1px 10px;border-bottom:1px solid var(--line)}
     h1{font-size:1.25rem;margin:0}.subtitle,.detail,label{color:var(--muted);font-size:.84rem}.head{display:flex;align-items:center;justify-content:space-between;gap:10px}.counter{background:#283244;border:1px solid #3a465c;border-radius:999px;padding:7px 11px;font-weight:850;white-space:nowrap}
-    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}.tab,.btn{border:0;border-radius:12px;padding:11px 7px;font-weight:850}.tab{background:#232b39;color:var(--muted)}.tab.active,.primary{background:var(--gold);color:#181206}
+    .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}.tab{font-size:.78rem}.tab,.btn{border:0;border-radius:12px;padding:11px 7px;font-weight:850}.tab{background:#232b39;color:var(--muted)}.tab.active,.primary{background:var(--gold);color:#181206}
     .view{display:none;padding-top:14px}.view.active{display:block}.card{background:#181f2af2;border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:0 8px 25px #0003}
     select,input{width:100%;background:#0e141c;color:var(--text);border:1px solid #3a465c;border-radius:10px;padding:11px;margin-top:5px}.split{display:grid;gap:12px}
     .result{min-height:185px;display:flex;flex-direction:column;justify-content:center;text-align:center}.cap{text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-size:.74rem;font-weight:850}.formula{color:var(--muted);margin-top:7px}.big{font-size:3.45rem;line-height:1;font-weight:950;margin:10px 0}.damage .big,.gold{color:var(--gold)}
     .fail{border-color:#7a404a;background:#291b21}.fail .big{color:var(--red)}.crit{border-color:#8a6d28;background:#2a2517}.invalid{text-decoration:line-through;opacity:.58}.hidden{display:none!important}
     .bar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:#090d12f5;border-top:1px solid var(--line);padding:10px max(14px,calc((100vw - 720px)/2 + 14px)) calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 2fr;gap:8px}.secondary{background:#293345;color:var(--text)}.danger{background:#583038;color:#fff}
     .notice{background:#242d3c;border-left:4px solid var(--gold);padding:10px 12px;border-radius:9px;font-size:.86rem;color:#dce2ed}.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.row>*{flex:1}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-    .switchline{display:flex;align-items:center;gap:9px;margin:12px 0}.switchline input{width:auto;margin:0}.history{border-left:4px solid #63728a}.history.bad{border-left-color:var(--red)}.history.critical{border-left-color:var(--gold)}.histhead{display:flex;justify-content:space-between;gap:8px}.empty{text-align:center;color:var(--muted);padding:30px 10px}
+    .switchline{display:flex;align-items:center;gap:9px;margin:12px 0}.switchline input{width:auto;margin:0}.history{border-left:4px solid #63728a}.history.bad{border-left-color:var(--red)}.history.critical{border-left-color:var(--gold)}.history.healing{border-left-color:var(--green)}.healingText{color:var(--green)}.histhead{display:flex;justify-content:space-between;gap:8px}.empty{text-align:center;color:var(--muted);padding:30px 10px}
     .edit{background:#222a38;border:1px solid #313c50;border-radius:13px;padding:12px;margin:10px 0}.quickgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.diebtn{border:1px solid #46536c;background:#252e3d;color:#fff;border-radius:14px;padding:18px 5px;font-weight:900}.quickresult{text-align:center;color:var(--gold);font-size:3rem;font-weight:950;min-height:85px;padding:13px}
     @media(min-width:610px){.split{grid-template-columns:1fr 1fr}.result{min-height:260px}}
   </style>
@@ -36,6 +36,7 @@
     <nav class="tabs">
       <button class="tab active" data-view="fight">Kampf</button>
       <button class="tab" data-view="quick">Würfel</button>
+      <button class="tab" data-view="healing">Heilung</button>
       <button class="tab" data-view="history">Historie</button>
       <button class="tab" data-view="settings">Werte</button>
     </nav>
@@ -68,6 +69,15 @@
     <div class="card"><div class="cap">Schnellwürfel</div><div class="quickresult" id="quickResult">–</div><div class="quickgrid" id="quickGrid"></div></div>
   </section>
 
+  <section id="healing" class="view">
+    <div class="card result damage">
+      <div class="cap">Heilung</div><div class="formula" id="healingFormula">15W6</div>
+      <div class="big healingText" id="healingResult">–</div>
+      <div class="detail" id="healingDetail">Noch nicht gewürfelt</div>
+    </div>
+    <button class="btn primary" style="width:100%;padding:16px" id="rollHealing">Heilung würfeln</button>
+  </section>
+
   <section id="history" class="view">
     <div class="row"><button class="btn secondary" id="exportButton">Sicherung exportieren</button><button class="btn danger" id="clearHistory">Historie löschen</button></div>
     <div id="historyList"></div>
@@ -80,6 +90,13 @@
       <label>Wert (0–5)<input type="number" min="0" max="5" id="expertiseValue"></label>
       <label class="switchline"><input type="checkbox" id="powerEnabled"> Kraftangriff aktiv</label>
       <label>Wert (0–5)<input type="number" min="0" max="5" id="powerValue"></label>
+    </div>
+    <div class="card">
+      <h3>Heilung</h3>
+      <div class="grid2">
+        <label>Anzahl der Würfel<input type="number" min="1" id="healingDiceCount"></label>
+        <label>Würfelseiten<input type="number" min="2" id="healingDiceSides"></label>
+      </div>
     </div>
     <div class="card">
       <h3>Angriffe bearbeiten</h3><div id="attackEditors"></div>
@@ -102,7 +119,7 @@
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+  var DEFAULTS={counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
     {name:'1. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
     {name:'2. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
     {name:'3. Angriff',baseAttack:66,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
@@ -183,10 +200,26 @@
     state.advanceBeforeRoll=true;
     save();renderFight();
   }
+  function renderHealing(){
+    var count=Math.max(1,Number(state.healingDiceCount)||15),sides=Math.max(2,Number(state.healingDiceSides)||6);
+    el('healingFormula').textContent=count+'W'+sides;
+  }
+  function performHealing(){
+    var count=Math.max(1,Number(state.healingDiceCount)||15),sides=Math.max(2,Number(state.healingDiceSides)||6);
+    var result=rollDice(count,sides);
+    el('healingResult').textContent=result.sum;
+    el('healingDetail').textContent='Würfel: '+result.rolls.join(', ');
+    state.history.unshift({type:'healing',time:Date.now(),diceCount:count,diceSides:sides,rolls:result.rolls,total:result.sum});
+    if(state.history.length>300)state.history.length=300;
+    save();
+  }
   function renderHistory(){
     var host=el('historyList');
     if(!state.history.length){host.innerHTML='<div class="card empty">Noch keine Würfe gespeichert.</div>';return}
     host.innerHTML=state.history.map(function(item){
+      if(item.type==='healing'){
+        return '<div class="card history healing"><div class="histhead"><b class="healingText">Heilung '+item.diceCount+'W'+item.diceSides+'</b><span class="detail">'+new Date(item.time).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</span></div><p>Geheilt: <b>'+item.total+'</b></p><p class="detail">Würfel: '+item.rolls.join(', ')+'</p></div>';
+      }
       var critical=item.confirmationTotal!=null?'<p class="gold">Bestätigung: '+item.confirmationTotal+' (W20: '+item.confirmationNatural+')<br>Möglicher kritischer Schaden: <b>'+item.criticalTotal+'</b></p>':'';
       return'<div class="card history '+item.status+'"><div class="histhead"><b>'+escapeHtml(item.name)+'</b><span class="detail">'+new Date(item.time).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</span></div><p>Angriff: <b>'+item.attackTotal+'</b> (W20: '+item.natural+' '+signed(item.attackBonus)+')</p><p>Schaden: <b>'+item.damageTotal+'</b> ('+item.damageRolls.join(', ')+' '+signed(item.damageBonus)+')</p>'+critical+'</div>';
     }).join('');
@@ -194,6 +227,7 @@
   function renderSettings(){
     el('expertiseEnabled').checked=state.expertiseEnabled;el('expertiseValue').value=state.expertiseValue;
     el('powerEnabled').checked=state.powerEnabled;el('powerValue').value=state.powerValue;
+    el('healingDiceCount').value=state.healingDiceCount||15;el('healingDiceSides').value=state.healingDiceSides||6;
     var host=el('attackEditors');host.innerHTML='';
     state.attacks.forEach(function(attack,index){
       var box=document.createElement('div');box.className='edit';
@@ -214,23 +248,26 @@
       host.appendChild(box);
     });
   }
-  function renderAll(){renderFight();renderHistory();renderSettings()}
+  function renderAll(){renderFight();renderHealing();renderHistory();renderSettings()}
   document.querySelectorAll('.tab').forEach(function(tab){
     tab.onclick=function(){
       document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
       document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
       tab.classList.add('active');el(tab.dataset.view).classList.add('active');
       el('fightBar').classList.toggle('hidden',tab.dataset.view!=='fight');
-      if(tab.dataset.view==='history')renderHistory();if(tab.dataset.view==='settings')renderSettings();
+      if(tab.dataset.view==='healing')renderHealing();if(tab.dataset.view==='history')renderHistory();if(tab.dataset.view==='settings')renderSettings();
     };
   });
   el('rollAttack').onclick=performAttack;
+  el('rollHealing').onclick=performHealing;
   el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);state.advanceBeforeRoll=false;save();renderFight();clearResults()};
   el('resetCounter').onclick=function(){if(confirm('Counter zurücksetzen und bei Angriff 1 beginnen?')){state.counter=0;state.currentAttack=0;state.advanceBeforeRoll=false;save();renderFight();clearResults()}};
   el('expertiseEnabled').onchange=function(){state.expertiseEnabled=this.checked;save();renderFight()};
   el('powerEnabled').onchange=function(){state.powerEnabled=this.checked;save();renderFight()};
   el('expertiseValue').onchange=function(){state.expertiseValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
   el('powerValue').onchange=function(){state.powerValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
+  el('healingDiceCount').onchange=function(){state.healingDiceCount=Math.max(1,Number(this.value)||15);save();renderHealing()};
+  el('healingDiceSides').onchange=function(){state.healingDiceSides=Math.max(2,Number(this.value)||6);save();renderHealing()};
   el('addAttack').onclick=function(){state.attacks.push({name:'Neuer Angriff',baseAttack:0,diceCount:1,diceSides:6,baseDamage:0,criticalMultiplier:2});state.currentAttack=state.attacks.length-1;state.advanceBeforeRoll=false;save();renderAll();clearResults()};
   el('clearHistory').onclick=function(){if(confirm('Gesamte Historie löschen?')){state.history=[];save();renderHistory()}};
   el('resetAll').onclick=function(){if(confirm('Alle Änderungen, Würfe und die Historie löschen?')){state=clone(DEFAULTS);save();renderAll();clearResults()}};
