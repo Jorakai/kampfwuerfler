@@ -1,0 +1,20 @@
+{
+  "name": "Kampfwürfler",
+  "short_name": "Würfler",
+  "description": "Schneller, flexibler Kampfwürfler für Rollenspielrunden",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c1016",
+  "theme_color": "#10151d",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
