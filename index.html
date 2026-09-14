@@ -19,7 +19,7 @@
     select,input{width:100%;background:#0e141c;color:var(--text);border:1px solid #3a465c;border-radius:10px;padding:11px;margin-top:5px}.split{display:grid;gap:12px}
     .result{min-height:185px;display:flex;flex-direction:column;justify-content:center;text-align:center}.cap{text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-size:.74rem;font-weight:850}.formula{color:var(--muted);margin-top:7px}.big{font-size:3.45rem;line-height:1;font-weight:950;margin:10px 0}.damage .big,.gold{color:var(--gold)}
     .fail{border-color:#7a404a;background:#291b21}.fail .big{color:var(--red)}.crit{border-color:#8a6d28;background:#2a2517}.invalid{text-decoration:line-through;opacity:.58}.hidden{display:none!important}
-    .bar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:#090d12f5;border-top:1px solid var(--line);padding:10px max(14px,calc((100vw - 720px)/2 + 14px)) calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 2fr 1fr;gap:8px}.secondary{background:#293345;color:var(--text)}.danger{background:#583038;color:#fff}
+    .bar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:#090d12f5;border-top:1px solid var(--line);padding:10px max(14px,calc((100vw - 720px)/2 + 14px)) calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 2fr;gap:8px}.secondary{background:#293345;color:var(--text)}.danger{background:#583038;color:#fff}
     .notice{background:#242d3c;border-left:4px solid var(--gold);padding:10px 12px;border-radius:9px;font-size:.86rem;color:#dce2ed}.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.row>*{flex:1}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .switchline{display:flex;align-items:center;gap:9px;margin:12px 0}.switchline input{width:auto;margin:0}.history{border-left:4px solid #63728a}.history.bad{border-left-color:var(--red)}.history.critical{border-left-color:var(--gold)}.histhead{display:flex;justify-content:space-between;gap:8px}.empty{text-align:center;color:var(--muted);padding:30px 10px}
     .edit{background:#222a38;border:1px solid #313c50;border-radius:13px;padding:12px;margin:10px 0}.quickgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.diebtn{border:1px solid #46536c;background:#252e3d;color:#fff;border-radius:14px;padding:18px 5px;font-weight:900}.quickresult{text-align:center;color:var(--gold);font-size:3rem;font-weight:950;min-height:85px;padding:13px}
@@ -96,14 +96,13 @@
 <div class="bar" id="fightBar">
   <button class="btn secondary" id="resetCounter">Counter 0</button>
   <button class="btn primary" id="rollAttack">Angriff würfeln</button>
-  <button class="btn secondary" id="nextAttack">Nächster</button>
 </div>
 
 <script>
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={counter:0,currentAttack:0,history:[],expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+  var DEFAULTS={counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
     {name:'1. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
     {name:'2. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
     {name:'3. Angriff',baseAttack:66,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
@@ -148,6 +147,7 @@
     el('criticalCard').classList.add('hidden');
   }
   function performAttack(){
+    if(state.advanceBeforeRoll){state.currentAttack=(state.currentAttack+1)%state.attacks.length}
     var value=current(),attack=value.attack;
     var natural=randomDie(20),attackTotal=natural+value.attackBonus;
     var damageRoll=rollDice(Number(attack.diceCount),Number(attack.diceSides));
@@ -180,6 +180,7 @@
       el('criticalCard').classList.remove('hidden');
     }
     state.history.unshift(entry);if(state.history.length>300)state.history.length=300;
+    state.advanceBeforeRoll=true;
     save();renderFight();
   }
   function renderHistory(){
@@ -208,7 +209,7 @@
       box.querySelectorAll('input').forEach(function(input){input.addEventListener('change',update)});
       box.querySelector('.deleteAttack').onclick=function(){
         if(state.attacks.length===1){alert('Mindestens ein Angriff muss bestehen bleiben.');return}
-        state.attacks.splice(index,1);state.currentAttack=0;save();renderAll();clearResults();
+        state.attacks.splice(index,1);state.currentAttack=0;state.advanceBeforeRoll=false;save();renderAll();clearResults();
       };
       host.appendChild(box);
     });
@@ -224,14 +225,13 @@
     };
   });
   el('rollAttack').onclick=performAttack;
-  el('nextAttack').onclick=function(){state.currentAttack=(state.currentAttack+1)%state.attacks.length;save();renderFight();clearResults()};
-  el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);save();renderFight();clearResults()};
+  el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);state.advanceBeforeRoll=false;save();renderFight();clearResults()};
   el('resetCounter').onclick=function(){if(confirm('Angriffscounter auf 0 setzen?')){state.counter=0;save();renderFight()}};
   el('expertiseEnabled').onchange=function(){state.expertiseEnabled=this.checked;save();renderFight()};
   el('powerEnabled').onchange=function(){state.powerEnabled=this.checked;save();renderFight()};
   el('expertiseValue').onchange=function(){state.expertiseValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
   el('powerValue').onchange=function(){state.powerValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
-  el('addAttack').onclick=function(){state.attacks.push({name:'Neuer Angriff',baseAttack:0,diceCount:1,diceSides:6,baseDamage:0,criticalMultiplier:2});state.currentAttack=state.attacks.length-1;save();renderAll();clearResults()};
+  el('addAttack').onclick=function(){state.attacks.push({name:'Neuer Angriff',baseAttack:0,diceCount:1,diceSides:6,baseDamage:0,criticalMultiplier:2});state.currentAttack=state.attacks.length-1;state.advanceBeforeRoll=false;save();renderAll();clearResults()};
   el('clearHistory').onclick=function(){if(confirm('Gesamte Historie löschen?')){state.history=[];save();renderHistory()}};
   el('resetAll').onclick=function(){if(confirm('Alle Änderungen, Würfe und die Historie löschen?')){state=clone(DEFAULTS);save();renderAll();clearResults()}};
   el('exportButton').onclick=function(){var url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));var link=document.createElement('a');link.href=url;link.download='kampfwuerfler-sicherung.json';link.click();setTimeout(function(){URL.revokeObjectURL(url)},500)};
