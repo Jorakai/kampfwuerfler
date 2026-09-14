@@ -226,7 +226,7 @@
   });
   el('rollAttack').onclick=performAttack;
   el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);state.advanceBeforeRoll=false;save();renderFight();clearResults()};
-  el('resetCounter').onclick=function(){if(confirm('Angriffscounter auf 0 setzen?')){state.counter=0;save();renderFight()}};
+  el('resetCounter').onclick=function(){if(confirm('Counter zurücksetzen und bei Angriff 1 beginnen?')){state.counter=0;state.currentAttack=0;state.advanceBeforeRoll=false;save();renderFight();clearResults()}};
   el('expertiseEnabled').onchange=function(){state.expertiseEnabled=this.checked;save();renderFight()};
   el('powerEnabled').onchange=function(){state.powerEnabled=this.checked;save();renderFight()};
   el('expertiseValue').onchange=function(){state.expertiseValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
