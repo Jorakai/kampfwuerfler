@@ -14,7 +14,7 @@
     button,input,select{font:inherit}.app{max-width:720px;margin:auto;min-height:100vh;padding:env(safe-area-inset-top) 14px calc(94px + env(safe-area-inset-bottom))}
     header{position:sticky;top:0;z-index:5;background:#0c1016ef;backdrop-filter:blur(12px);padding:14px 1px 10px;border-bottom:1px solid var(--line)}
     h1{font-size:1.25rem;margin:0}.subtitle,.detail,label{color:var(--muted);font-size:.84rem}.head{display:flex;align-items:center;justify-content:space-between;gap:10px}.counter{background:#283244;border:1px solid #3a465c;border-radius:999px;padding:7px 11px;font-weight:850;white-space:nowrap}
-    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px}.tab{font-size:.78rem}.tab,.btn{border:0;border-radius:12px;padding:11px 7px;font-weight:850}.tab{background:#232b39;color:var(--muted)}.tab.active,.primary{background:var(--gold);color:#181206}
+    .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}.tab{font-size:.78rem}.tab,.btn{border:0;border-radius:12px;padding:11px 7px;font-weight:850}.tab{background:#232b39;color:var(--muted)}.tab.active,.primary{background:var(--gold);color:#181206}
     .view{display:none;padding-top:14px}.view.active{display:block}.card{background:#181f2af2;border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:0 8px 25px #0003}
     select,input{width:100%;background:#0e141c;color:var(--text);border:1px solid #3a465c;border-radius:10px;padding:11px;margin-top:5px}.split{display:grid;gap:12px}
     .result{min-height:185px;display:flex;flex-direction:column;justify-content:center;text-align:center}.cap{text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-size:.74rem;font-weight:850}.formula{color:var(--muted);margin-top:7px}.big{font-size:3.45rem;line-height:1;font-weight:950;margin:10px 0}.damage .big,.gold{color:var(--gold)}
@@ -24,13 +24,14 @@
     .switchline{display:flex;align-items:center;gap:9px;margin:12px 0}.switchline input{width:auto;margin:0}.history{border-left:4px solid #63728a}.history.bad{border-left-color:var(--red)}.history.critical{border-left-color:var(--gold)}.history.healing{border-left-color:var(--green)}.healingText{color:var(--green)}.histhead{display:flex;justify-content:space-between;gap:8px}.empty{text-align:center;color:var(--muted);padding:30px 10px}
     .edit{background:#222a38;border:1px solid #313c50;border-radius:13px;padding:12px;margin:10px 0}.quickgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.diebtn{border:1px solid #46536c;background:#252e3d;color:#fff;border-radius:14px;padding:18px 5px;font-weight:900}.quickresult{text-align:center;color:var(--gold);font-size:3rem;font-weight:950;min-height:85px;padding:13px}
     @media(min-width:610px){.split{grid-template-columns:1fr 1fr}.result{min-height:260px}}
+    .help-table{width:100%;border-collapse:collapse;font-size:1rem}.help-table th,.help-table td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line)}.help-table th{color:var(--muted);font-weight:600}.help-table td:last-child{color:var(--gold);font-weight:800}.distance-output{font-size:1.1rem;font-weight:750;margin:16px 0 0}.help-label{font-size:.9rem}.help-note{color:var(--muted);line-height:1.5}.tab{min-width:0;overflow-wrap:anywhere}h2{font-size:1.15rem}
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Testversion</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 7</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -38,6 +39,7 @@
       <button class="tab" data-view="quick">Würfel</button>
       <button class="tab" data-view="history">Historie</button>
       <button class="tab" data-view="settings">Werte</button>
+      <button class="tab" data-view="help">Hilfe</button>
     </nav>
   </header>
 
@@ -75,6 +77,39 @@
   <section id="history" class="view">
     <div class="row"><button class="btn secondary" id="exportButton">Sicherung exportieren</button><button class="btn danger" id="clearHistory">Historie löschen</button></div>
     <div id="historyList"></div>
+  </section>
+
+  <section id="help" class="view">
+    <div class="card">
+      <h2>Felder und Meter</h2>
+      <p class="help-note">1 Feld = 1,5 Meter</p>
+      <div class="grid2">
+        <label class="help-label">Felder<input id="distanceFields" type="number" min="0" step="any" inputmode="decimal" value="14"></label>
+        <label class="help-label">Meter<input id="distanceMeters" type="number" min="0" step="any" inputmode="decimal" value="21"></label>
+      </div>
+      <p class="distance-output" id="distanceOutput" aria-live="polite">14 Felder = 21 Meter</p>
+    </div>
+    <div class="card">
+      <h2>Deine Bewegung</h2>
+      <table class="help-table"><thead><tr><th scope="col">Bewegung</th><th scope="col">Felder</th><th scope="col">Meter</th></tr></thead><tbody>
+        <tr><th scope="row">Normal</th><td>14</td><td>21</td></tr>
+        <tr><th scope="row">Doppelt ×2</th><td>28</td><td>42</td></tr>
+        <tr><th scope="row">Rennen ×4</th><td>56</td><td>84</td></tr>
+      </tbody></table>
+      <p class="help-note">Doppelte Bewegung: keine Mali.</p>
+      <p class="notice">Leichte Rüstung: Beim Rennen bist du Flat-footed (auf dem falschen Fuß).</p>
+    </div>
+    <div class="card">
+      <h2>Abstände für Boni</h2>
+      <p class="help-note">Zur Orientierung für die Entfernung zwischen dir und anderen Figuren.</p>
+      <table class="help-table"><thead><tr><th scope="col">Meter</th><th scope="col">Felder</th></tr></thead><tbody>
+        <tr><td>4,5</td><td>3</td></tr>
+        <tr><td>6</td><td>4</td></tr>
+        <tr><td>9</td><td>6</td></tr>
+        <tr><td>12</td><td>8</td></tr>
+      </tbody></table>
+      <p class="help-note">Welche Boni in welcher Entfernung gelten, richtet sich nach der jeweiligen Fähigkeit.</p>
+    </div>
   </section>
 
   <section id="settings" class="view">
@@ -127,6 +162,20 @@
   }
   var state=normalizeExtraDamage(load());
   function el(id){return document.getElementById(id)}
+  function updateDistance(source){
+    var input=el(source==='fields'?'distanceFields':'distanceMeters');
+    var other=el(source==='fields'?'distanceMeters':'distanceFields');
+    if(input.value===''||!input.validity.valid||!Number.isFinite(input.valueAsNumber)||input.valueAsNumber<0){
+      other.value='';el('distanceOutput').textContent='Bitte eine Entfernung ab 0 eingeben.';return;
+    }
+    var fields=source==='fields'?input.valueAsNumber:input.valueAsNumber/1.5;
+    var meters=fields*1.5;
+    other.value=Number((source==='fields'?meters:fields).toFixed(6));
+    function format(value){return value.toLocaleString('de-DE',{maximumFractionDigits:6})}
+    el('distanceOutput').textContent=format(fields)+(fields===1?' Feld':' Felder')+' = '+format(meters)+' Meter';
+  }
+  el('distanceFields').addEventListener('input',function(){updateDistance('fields')});
+  el('distanceMeters').addEventListener('input',function(){updateDistance('meters')});
   function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
   function randomDie(sides){var bucket=new Uint32Array(1);crypto.getRandomValues(bucket);return bucket[0]%sides+1}
   function rollDice(count,sides){var rolls=[],sum=0;for(var i=0;i<count;i++){var value=randomDie(sides);rolls.push(value);sum+=value}return{rolls:rolls,sum:sum}}
