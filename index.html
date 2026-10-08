@@ -107,18 +107,21 @@
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
   var DEFAULTS={counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
-    {name:'1. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'2. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'3. Angriff',baseAttack:66,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'4. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'5. Angriff',baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'6. Angriff',baseAttack:72,diceCount:4,diceSides:12,baseDamage:17,criticalMultiplier:2}
+    {name:'1. Angriff',extraDamageEligible:true,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
+    {name:'2. Angriff',extraDamageEligible:false,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
+    {name:'3. Angriff',extraDamageEligible:false,baseAttack:66,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
+    {name:'4. Angriff',extraDamageEligible:true,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
+    {name:'5. Angriff',extraDamageEligible:true,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
+    {name:'6. Angriff',extraDamageEligible:true,baseAttack:72,diceCount:4,diceSides:12,baseDamage:17,criticalMultiplier:2}
   ]};
   function clone(x){return JSON.parse(JSON.stringify(x))}
   function load(){try{var x=JSON.parse(localStorage.getItem(STORAGE_KEY));return x&&x.attacks&&x.attacks.length?x:clone(DEFAULTS)}catch(err){return clone(DEFAULTS)}}
   function normalizeExtraDamage(value){
     value.extraDamageEnabled=value.extraDamageEnabled===true;
     value.extraDamageDice=[1,2,5].indexOf(Number(value.extraDamageDice))!==-1?Number(value.extraDamageDice):1;
+    value.attacks.forEach(function(attack,index){
+      if(typeof attack.extraDamageEligible!=='boolean')attack.extraDamageEligible=index!==1&&index!==2;
+    });
     delete value.healingDiceCount;delete value.healingDiceSides;
     return value;
   }
@@ -147,10 +150,11 @@
     el('extraDamageEnabled').checked=state.extraDamageEnabled;
     el('extraDamageDice').value=state.extraDamageDice;
     el('extraDamageDice').disabled=!state.extraDamageEnabled;
-    el('damageFormula').textContent=attack.diceCount+'W'+attack.diceSides+' '+signed(value.damageBonus)+(state.extraDamageEnabled?' + '+state.extraDamageDice+'W6':'');
+    el('damageFormula').textContent=attack.diceCount+'W'+attack.diceSides+' '+signed(value.damageBonus)+(state.extraDamageEnabled&&attack.extraDamageEligible?' + '+state.extraDamageDice+'W6':'');
     var options=[];
     if(value.expertise)options.push('Kampfsachkenntnis '+value.expertise+' · Verteidigung +'+value.expertise);
     if(value.power)options.push('Kraftangriff '+value.power);
+    if(state.extraDamageEnabled)options.push(attack.extraDamageEligible?'Alnar-Keth: +'+state.extraDamageDice+'W6':'Kein Alnar-Keth-Zusatzschaden bei diesem Angriff');
     el('optionNotice').textContent=options.length?options.join(' | '):'Keine Kampfoption aktiv';
   }
   function clearResults(){
@@ -164,7 +168,7 @@
     var value=current(),attack=value.attack;
     var natural=randomDie(20),attackTotal=natural+value.attackBonus;
     var damageRoll=rollDice(Number(attack.diceCount),Number(attack.diceSides));
-    var extraRoll=rollDice(state.extraDamageEnabled?state.extraDamageDice:0,6);
+    var extraRoll=rollDice(state.extraDamageEnabled&&attack.extraDamageEligible?state.extraDamageDice:0,6);
     var extraDetail=extraRoll.rolls.length?' · Zusatz '+state.extraDamageDice+'W6: '+extraRoll.rolls.join(' + ')+' = '+extraRoll.sum:'';
     var damageTotal=damageRoll.sum+value.damageBonus+extraRoll.sum;
     var entry={time:Date.now(),name:attack.name,natural:natural,attackBonus:value.attackBonus,attackTotal:attackTotal,damageRolls:damageRoll.rolls,damageBonus:value.damageBonus,damageTotal:damageTotal,extraDamageRolls:extraRoll.rolls,extraDamageTotal:extraRoll.sum,status:'normal'};
@@ -216,8 +220,9 @@
     var host=el('attackEditors');host.innerHTML='';
     state.attacks.forEach(function(attack,index){
       var box=document.createElement('div');box.className='edit';
-      box.innerHTML='<label>Name<input class="editName" value="'+escapeHtml(attack.name)+'"></label><div class="grid2"><label>Grund-Angriff<input class="editAttack" type="number" value="'+attack.baseAttack+'"></label><label>Grund-Schaden<input class="editDamage" type="number" value="'+attack.baseDamage+'"></label><label>Würfelanzahl<input class="editCount" type="number" min="1" value="'+attack.diceCount+'"></label><label>Würfelseiten<input class="editSides" type="number" min="2" value="'+attack.diceSides+'"></label></div><button class="btn danger deleteAttack" style="margin-top:9px">Angriff löschen</button>';
+      box.innerHTML='<label>Name<input class="editName" value="'+escapeHtml(attack.name)+'"></label><div class="grid2"><label>Grund-Angriff<input class="editAttack" type="number" value="'+attack.baseAttack+'"></label><label>Grund-Schaden<input class="editDamage" type="number" value="'+attack.baseDamage+'"></label><label>Würfelanzahl<input class="editCount" type="number" min="1" value="'+attack.diceCount+'"></label><label>Würfelseiten<input class="editSides" type="number" min="2" value="'+attack.diceSides+'"></label></div><label class="switchline"><input class="editExtraDamage" type="checkbox" '+(attack.extraDamageEligible?'checked':'')+'> Waffe von Alnar-Keth · Zusatzschaden möglich</label><button class="btn danger deleteAttack" style="margin-top:9px">Angriff löschen</button>';
       function update(){
+        attack.extraDamageEligible=box.querySelector('.editExtraDamage').checked;
         attack.name=box.querySelector('.editName').value||('Angriff '+(index+1));
         attack.baseAttack=Number(box.querySelector('.editAttack').value)||0;
         attack.baseDamage=Number(box.querySelector('.editDamage').value)||0;
@@ -252,7 +257,7 @@
   el('powerValue').onchange=function(){state.powerValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
   el('extraDamageEnabled').onchange=function(){state.extraDamageEnabled=this.checked;save();renderFight();clearResults()};
   el('extraDamageDice').onchange=function(){state.extraDamageDice=Number(this.value);normalizeExtraDamage(state);save();renderFight();clearResults()};
-  el('addAttack').onclick=function(){state.attacks.push({name:'Neuer Angriff',baseAttack:0,diceCount:1,diceSides:6,baseDamage:0,criticalMultiplier:2});state.currentAttack=state.attacks.length-1;state.advanceBeforeRoll=false;save();renderAll();clearResults()};
+  el('addAttack').onclick=function(){state.attacks.push({name:'Neuer Angriff',extraDamageEligible:false,baseAttack:0,diceCount:1,diceSides:6,baseDamage:0,criticalMultiplier:2});state.currentAttack=state.attacks.length-1;state.advanceBeforeRoll=false;save();renderAll();clearResults()};
   el('clearHistory').onclick=function(){if(confirm('Gesamte Historie löschen?')){state.history=[];save();renderHistory()}};
   el('resetAll').onclick=function(){if(confirm('Alle Änderungen, Würfe und die Historie löschen?')){state=clone(DEFAULTS);save();renderAll();clearResults()}};
   el('exportButton').onclick=function(){var url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));var link=document.createElement('a');link.href=url;link.download='kampfwuerfler-sicherung.json';link.click();setTimeout(function(){URL.revokeObjectURL(url)},500)};
