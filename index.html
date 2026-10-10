@@ -14,7 +14,7 @@
     button,input,select{font:inherit}.app{max-width:720px;margin:auto;min-height:100vh;padding:env(safe-area-inset-top) 14px calc(94px + env(safe-area-inset-bottom))}
     header{position:sticky;top:0;z-index:5;background:#0c1016ef;backdrop-filter:blur(12px);padding:14px 1px 10px;border-bottom:1px solid var(--line)}
     h1{font-size:1.25rem;margin:0}.subtitle,.detail,label{color:var(--muted);font-size:.84rem}.head{display:flex;align-items:center;justify-content:space-between;gap:10px}.counter{background:#283244;border:1px solid #3a465c;border-radius:999px;padding:7px 11px;font-weight:850;white-space:nowrap}
-    .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}.tab{font-size:.78rem}.tab,.btn{border:0;border-radius:12px;padding:11px 7px;font-weight:850}.tab{background:#232b39;color:var(--muted)}.tab.active,.primary{background:var(--gold);color:#181206}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}.tab{font-size:.78rem}.tab,.btn{border:0;border-radius:12px;padding:11px 7px;font-weight:850}.tab{background:#232b39;color:var(--muted)}.tab.active,.primary{background:var(--gold);color:#181206}
     .view{display:none;padding-top:14px}.view.active{display:block}.card{background:#181f2af2;border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:0 8px 25px #0003}
     select,input{width:100%;background:#0e141c;color:var(--text);border:1px solid #3a465c;border-radius:10px;padding:11px;margin-top:5px}.split{display:grid;gap:12px}
     .result{min-height:185px;display:flex;flex-direction:column;justify-content:center;text-align:center}.cap{text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-size:.74rem;font-weight:850}.formula{color:var(--muted);margin-top:7px}.big{font-size:3.45rem;line-height:1;font-weight:950;margin:10px 0}.damage .big,.gold{color:var(--gold)}
@@ -23,7 +23,7 @@
     .notice{background:#242d3c;border-left:4px solid var(--gold);padding:10px 12px;border-radius:9px;font-size:.86rem;color:#dce2ed}.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.row>*{flex:1}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .switchline{display:flex;align-items:center;gap:9px;margin:12px 0}.switchline input{width:auto;margin:0}.history{border-left:4px solid #63728a}.history.bad{border-left-color:var(--red)}.history.critical{border-left-color:var(--gold)}.history.healing{border-left-color:var(--green)}.healingText{color:var(--green)}.histhead{display:flex;justify-content:space-between;gap:8px}.empty{text-align:center;color:var(--muted);padding:30px 10px}
     .edit{background:#222a38;border:1px solid #313c50;border-radius:13px;padding:12px;margin:10px 0}.quickgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.diebtn{border:1px solid #46536c;background:#252e3d;color:#fff;border-radius:14px;padding:18px 5px;font-weight:900}.quickresult{text-align:center;color:var(--gold);font-size:3rem;font-weight:950;min-height:85px;padding:13px}
-    @media(min-width:610px){.split{grid-template-columns:1fr 1fr}.result{min-height:260px}}
+    @media(min-width:610px){.tabs{grid-template-columns:repeat(6,1fr)}.split{grid-template-columns:1fr 1fr}.result{min-height:260px}}
     .help-table{width:100%;border-collapse:collapse;font-size:1rem}.help-table th,.help-table td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line)}.help-table th{color:var(--muted);font-weight:600}.help-table td:last-child{color:var(--gold);font-weight:800}.distance-output{font-size:1.1rem;font-weight:750;margin:16px 0 0}.help-label{font-size:.9rem}.help-note{color:var(--muted);line-height:1.5}.tab{min-width:0;overflow-wrap:anywhere}h2{font-size:1.15rem}
   </style>
 </head>
@@ -31,12 +31,13 @@
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 7</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 8</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
       <button class="tab active" data-view="fight">Kampf</button>
       <button class="tab" data-view="quick">Würfel</button>
+      <button class="tab" data-view="healing">Heilung</button>
       <button class="tab" data-view="history">Historie</button>
       <button class="tab" data-view="settings">Werte</button>
       <button class="tab" data-view="help">Hilfe</button>
@@ -49,7 +50,7 @@
       <div class="head" style="margin-top:12px"><b id="attackName"></b><span class="counter" id="position"></span></div>
       <label class="switchline"><input type="checkbox" id="extraDamageEnabled"> Zusatzschaden aktiv</label>
       <label>Zusatzschaden<select id="extraDamageDice">
-        <option value="1">+1W6</option><option value="2">+2W6</option><option value="5">+5W6</option>
+        <option value="1">+1W6</option><option value="2">+2W6</option><option value="6">+6W6</option>
       </select></label>
     </div>
     <div class="notice" id="optionNotice"></div>
@@ -72,6 +73,22 @@
 
   <section id="quick" class="view">
     <div class="card"><div class="cap">Schnellwürfel</div><div class="quickresult" id="quickResult">–</div><div class="quickgrid" id="quickGrid"></div></div>
+  </section>
+
+  <section id="healing" class="view">
+    <div class="card">
+      <h2>Heilung würfeln</h2>
+      <div class="grid2">
+        <label>Anzahl der Würfel<input id="healingDiceCount" type="number" min="1" step="1" inputmode="numeric"></label>
+        <label>Würfelseiten<select id="healingDiceSides"><option value="4">W4</option><option value="6">W6</option><option value="8">W8</option><option value="10">W10</option><option value="12">W12</option><option value="20">W20</option></select></label>
+      </div>
+    </div>
+    <div class="card result">
+      <div class="cap">Heilung</div><div class="formula" id="healingFormula"></div>
+      <div class="big healingText" id="healingResult">–</div>
+      <div class="detail" id="healingDetail">Noch nicht gewürfelt</div>
+    </div>
+    <button class="btn primary" style="width:100%;padding:16px" id="rollHealing">Heilung würfeln</button>
   </section>
 
   <section id="history" class="view">
@@ -143,7 +160,7 @@
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+  var DEFAULTS={counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
     {name:'1. Angriff',extraDamageEligible:true,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
     {name:'2. Angriff',extraDamageEligible:false,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
     {name:'3. Angriff',extraDamageEligible:false,baseAttack:66,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
@@ -155,11 +172,13 @@
   function load(){try{var x=JSON.parse(localStorage.getItem(STORAGE_KEY));return x&&x.attacks&&x.attacks.length?x:clone(DEFAULTS)}catch(err){return clone(DEFAULTS)}}
   function normalizeExtraDamage(value){
     value.extraDamageEnabled=value.extraDamageEnabled===true;
-    value.extraDamageDice=[1,2,5].indexOf(Number(value.extraDamageDice))!==-1?Number(value.extraDamageDice):1;
+    if(Number(value.extraDamageDice)===5)value.extraDamageDice=6;
+    value.extraDamageDice=[1,2,6].indexOf(Number(value.extraDamageDice))!==-1?Number(value.extraDamageDice):1;
     value.attacks.forEach(function(attack,index){
       if(typeof attack.extraDamageEligible!=='boolean')attack.extraDamageEligible=index!==1&&index!==2;
     });
-    delete value.healingDiceCount;delete value.healingDiceSides;
+    value.healingDiceCount=Number.isFinite(Number(value.healingDiceCount))&&Number(value.healingDiceCount)>=1?Math.floor(Number(value.healingDiceCount)):15;
+    value.healingDiceSides=[4,6,8,10,12,20].indexOf(Number(value.healingDiceSides))!==-1?Number(value.healingDiceSides):6;
     return value;
   }
   var state=normalizeExtraDamage(load());
@@ -253,6 +272,34 @@
     state.advanceBeforeRoll=true;
     save();renderFight();
   }
+  function renderHealing(){
+    el('healingDiceCount').value=state.healingDiceCount;
+    el('healingDiceSides').value=state.healingDiceSides;
+    el('healingFormula').textContent=state.healingDiceCount+'W'+state.healingDiceSides;
+  }
+  function clearHealing(){
+    el('healingResult').textContent='–';
+    el('healingDetail').textContent='Noch nicht gewürfelt';
+  }
+  function changeHealing(){
+    var count=Number(el('healingDiceCount').value);
+    if(!Number.isFinite(count)||count<1||!Number.isInteger(count)){
+      el('healingDiceCount').setCustomValidity('Bitte eine ganze Würfelanzahl ab 1 eingeben.');
+      el('healingDiceCount').reportValidity();return false;
+    }
+    el('healingDiceCount').setCustomValidity('');
+    state.healingDiceCount=count;state.healingDiceSides=Number(el('healingDiceSides').value);
+    save();renderHealing();clearHealing();return true;
+  }
+  function performHealing(){
+    if(!changeHealing())return;
+    var result=rollDice(state.healingDiceCount,state.healingDiceSides);
+    el('healingResult').textContent=result.sum;
+    el('healingDetail').textContent='Würfel: '+result.rolls.join(', ');
+    state.history.unshift({type:'healing',time:Date.now(),diceCount:state.healingDiceCount,diceSides:state.healingDiceSides,rolls:result.rolls,total:result.sum});
+    if(state.history.length>300)state.history.length=300;
+    save();
+  }
   function renderHistory(){
     var host=el('historyList');
     if(!state.history.length){host.innerHTML='<div class="card empty">Noch keine Würfe gespeichert.</div>';return}
@@ -289,16 +336,19 @@
       host.appendChild(box);
     });
   }
-  function renderAll(){renderFight();renderHistory();renderSettings()}
+  function renderAll(){renderFight();renderHealing();renderHistory();renderSettings()}
   document.querySelectorAll('.tab').forEach(function(tab){
     tab.onclick=function(){
       document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
       document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
       tab.classList.add('active');el(tab.dataset.view).classList.add('active');
       el('fightBar').classList.toggle('hidden',tab.dataset.view!=='fight');
-      if(tab.dataset.view==='history')renderHistory();if(tab.dataset.view==='settings')renderSettings();
+      if(tab.dataset.view==='healing')renderHealing();if(tab.dataset.view==='history')renderHistory();if(tab.dataset.view==='settings')renderSettings();
     };
   });
+  el('healingDiceCount').onchange=changeHealing;
+  el('healingDiceSides').onchange=changeHealing;
+  el('rollHealing').onclick=performHealing;
   el('rollAttack').onclick=performAttack;
   el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);state.advanceBeforeRoll=false;save();renderFight();clearResults()};
   el('resetCounter').onclick=function(){if(confirm('Counter zurücksetzen und bei Angriff 1 beginnen?')){state.counter=0;state.currentAttack=0;state.advanceBeforeRoll=false;save();renderFight();clearResults()}};
@@ -310,9 +360,9 @@
   el('extraDamageDice').onchange=function(){state.extraDamageDice=Number(this.value);normalizeExtraDamage(state);save();renderFight();clearResults()};
   el('addAttack').onclick=function(){state.attacks.push({name:'Neuer Angriff',extraDamageEligible:false,baseAttack:0,diceCount:1,diceSides:6,baseDamage:0,criticalMultiplier:2});state.currentAttack=state.attacks.length-1;state.advanceBeforeRoll=false;save();renderAll();clearResults()};
   el('clearHistory').onclick=function(){if(confirm('Gesamte Historie löschen?')){state.history=[];save();renderHistory()}};
-  el('resetAll').onclick=function(){if(confirm('Alle Änderungen, Würfe und die Historie löschen?')){state=clone(DEFAULTS);save();renderAll();clearResults()}};
+  el('resetAll').onclick=function(){if(confirm('Alle Änderungen, Würfe und die Historie löschen?')){state=clone(DEFAULTS);save();renderAll();clearResults();clearHealing()}};
   el('exportButton').onclick=function(){var url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));var link=document.createElement('a');link.href=url;link.download='kampfwuerfler-sicherung.json';link.click();setTimeout(function(){URL.revokeObjectURL(url)},500)};
-  el('importFile').onchange=function(){var file=this.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var imported=JSON.parse(reader.result);if(!imported.attacks||!imported.attacks.length)throw new Error();state=normalizeExtraDamage(imported);save();renderAll();clearResults();alert('Sicherung wurde importiert.')}catch(err){alert('Diese Sicherungsdatei ist ungültig.')}};reader.readAsText(file)};
+  el('importFile').onchange=function(){var file=this.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var imported=JSON.parse(reader.result);if(!imported.attacks||!imported.attacks.length)throw new Error();state=normalizeExtraDamage(imported);save();renderAll();clearResults();clearHealing();alert('Sicherung wurde importiert.')}catch(err){alert('Diese Sicherungsdatei ist ungültig.')}};reader.readAsText(file)};
   [4,6,8,10,12,20,100].forEach(function(sides){var button=document.createElement('button');button.className='diebtn';button.textContent='W'+sides;button.onclick=function(){el('quickResult').textContent='W'+sides+': '+randomDie(sides)};el('quickGrid').appendChild(button)});
   renderAll();clearResults();
   if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./service-worker.js')})}
