@@ -1,4 +1,4 @@
-const CACHE_NAME = "kampfwuerfler-v8";
+const CACHE_NAME = "kampfwuerfler-v9";
 const APP_FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", event => {
@@ -25,3 +25,4 @@ self.addEventListener("fetch", event => {
     }).catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
   );
 });
+
