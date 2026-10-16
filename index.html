@@ -25,13 +25,22 @@
     .edit{background:#222a38;border:1px solid #313c50;border-radius:13px;padding:12px;margin:10px 0}.quickgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.diebtn{border:1px solid #46536c;background:#252e3d;color:#fff;border-radius:14px;padding:18px 5px;font-weight:900}.quickresult{text-align:center;color:var(--gold);font-size:3rem;font-weight:950;min-height:85px;padding:13px}
     @media(min-width:610px){.tabs{grid-template-columns:repeat(6,1fr)}.split{grid-template-columns:1fr 1fr}.result{min-height:260px}}
     .help-table{width:100%;border-collapse:collapse;font-size:1rem}.help-table th,.help-table td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line)}.help-table th{color:var(--muted);font-weight:600}.help-table td:last-child{color:var(--gold);font-weight:800}.distance-output{font-size:1.1rem;font-weight:750;margin:16px 0 0}.help-label{font-size:.9rem}.help-note{color:var(--muted);line-height:1.5}.tab{min-width:0;overflow-wrap:anywhere}h2{font-size:1.15rem}
+    .bar-status{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.85rem}.bar-status .detail{flex-basis:100%;font-size:.75rem}.bar-status>span:not(.detail){margin-left:auto;color:var(--gold);font-weight:800}
+    .app{padding-bottom:calc(140px + env(safe-area-inset-bottom))}.combat-options summary{cursor:pointer;color:var(--muted);font-size:.84rem;padding:8px 0}.combat-results{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.combat-results .result{min-height:165px;min-width:0}.detail{overflow-wrap:anywhere}
+    @media(max-width:609px){
+      .app{padding-left:10px;padding-right:10px}header{padding:8px 0}.subtitle{font-size:.7rem}h1{font-size:1rem}.head>.counter{padding:5px 8px;font-size:.78rem}
+      .tabs{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin-top:8px}.tab{font-size:.65rem;padding:10px 2px;min-height:40px;border-radius:8px}
+      .view{padding-top:10px}.card{padding:10px;border-radius:12px;margin-bottom:8px}.attack-controls select{padding:8px;margin-top:3px}.attack-controls>.head{display:none}.switchline{font-size:.78rem;margin:10px 0;min-height:28px}.switchline input{min-width:18px;min-height:18px}
+      .combat-results{gap:8px;margin-top:8px!important}.combat-results .result{min-height:145px;padding:10px 7px}.combat-results .big{font-size:2.6rem;margin:8px 0}.combat-results .cap{font-size:.64rem;letter-spacing:.06em}.combat-results .formula,.combat-results .detail{font-size:.72rem}.notice{padding:7px 9px;font-size:.72rem}
+      #criticalCard h2{font-size:.95rem;margin:8px 0}#criticalCard h1{font-size:1.5rem}#criticalCard hr{margin:8px 0!important}.bar{padding-top:7px;gap:6px}.bar .btn{min-height:44px}.bar-status{font-size:.8rem}
+    }
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 8</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -45,16 +54,19 @@
   </header>
 
   <section id="fight" class="view active">
-    <div class="card">
+    <div class="card attack-controls">
       <label>Angriff<select id="attackSelect"></select></label>
       <div class="head" style="margin-top:12px"><b id="attackName"></b><span class="counter" id="position"></span></div>
+      <label class="switchline"><input type="checkbox" id="criticalEnabled"> Gegner kann kritisch getroffen werden (18–20)</label>
+      <details class="combat-options"><summary>Zusatzschaden einstellen</summary>
       <label class="switchline"><input type="checkbox" id="extraDamageEnabled"> Zusatzschaden aktiv</label>
       <label>Zusatzschaden<select id="extraDamageDice">
         <option value="1">+1W6</option><option value="2">+2W6</option><option value="6">+6W6</option>
       </select></label>
+      </details>
     </div>
     <div class="notice" id="optionNotice"></div>
-    <div class="split" style="margin-top:12px">
+    <div class="split combat-results" style="margin-top:12px">
       <div class="card result" id="attackCard">
         <div class="cap">Angriffswurf</div><div class="formula" id="attackFormula"></div>
         <div class="big" id="attackResult">–</div><div class="detail" id="attackDetail">Noch nicht gewürfelt</div>
@@ -152,6 +164,7 @@
 </div>
 
 <div class="bar" id="fightBar">
+  <div class="bar-status"><b id="barAttackName"></b><span id="barPosition"></span><span class="detail" id="nextAttack"></span></div>
   <button class="btn secondary" id="resetCounter">Counter 0</button>
   <button class="btn primary" id="rollAttack">Angriff würfeln</button>
 </div>
@@ -160,13 +173,15 @@
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
-    {name:'1. Angriff',extraDamageEligible:true,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'2. Angriff',extraDamageEligible:false,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'3. Angriff',extraDamageEligible:false,baseAttack:66,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'4. Angriff',extraDamageEligible:true,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'5. Angriff',extraDamageEligible:true,baseAttack:76,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2},
-    {name:'6. Angriff',extraDamageEligible:true,baseAttack:72,diceCount:4,diceSides:12,baseDamage:17,criticalMultiplier:2}
+  var DEFAULTS={schemaVersion:9,criticalEnabled:true,counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+    {name:'1. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'1. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'2. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'2. Nebenhandangriff',extraDamageEligible:false,baseAttack:72,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'3. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'4. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'5. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'1-2-Schlag',extraDamageEligible:true,baseAttack:78,diceCount:4,diceSides:12,baseDamage:24,criticalMultiplier:2}
   ]};
   function clone(x){return JSON.parse(JSON.stringify(x))}
   function load(){try{var x=JSON.parse(localStorage.getItem(STORAGE_KEY));return x&&x.attacks&&x.attacks.length?x:clone(DEFAULTS)}catch(err){return clone(DEFAULTS)}}
@@ -182,6 +197,13 @@
     return value;
   }
   var state=normalizeExtraDamage(load());
+  // One-time level-up: keep history, counter, healing and combat options.
+  if(Number(state.schemaVersion)<9||state.schemaVersion==null){
+    state.attacks=clone(DEFAULTS.attacks);state.currentAttack=0;state.advanceBeforeRoll=false;
+    state.schemaVersion=9;
+  }
+  if(typeof state.criticalEnabled!=='boolean')state.criticalEnabled=true;
+  save();
   function el(id){return document.getElementById(id)}
   function updateDistance(source){
     var input=el(source==='fields'?'distanceFields':'distanceMeters');
@@ -216,6 +238,12 @@
     el('attackSelect').value=state.currentAttack;
     el('attackName').textContent=attack.name;
     el('position').textContent=(state.currentAttack+1)+' von '+state.attacks.length;
+    el('barAttackName').textContent=attack.name;
+    el('barPosition').textContent=(state.currentAttack+1)+' / '+state.attacks.length;
+    var nextIndex=state.advanceBeforeRoll?(state.currentAttack+1)%state.attacks.length:state.currentAttack;
+    el('nextAttack').textContent='Nächster Wurf: '+state.attacks[nextIndex].name;
+    el('criticalEnabled').checked=state.criticalEnabled;
+    el('rollAttack').textContent=state.advanceBeforeRoll?'Nächsten Angriff würfeln':'Angriff würfeln';
     el('attackFormula').textContent='1W20 '+signed(value.attackBonus);
     el('extraDamageEnabled').checked=state.extraDamageEnabled;
     el('extraDamageDice').value=state.extraDamageDice;
@@ -253,9 +281,9 @@
       entry.status='bad';el('attackCard').classList.add('fail');el('damageCard').classList.add('fail');
       el('attackDetail').textContent='Natürliche 1 – automatischer Fehlschlag';
       el('damageDetail').textContent+=' · Schaden ungültig';el('damageDetail').classList.add('invalid');
-    }else if(natural===20){
+    }else if(natural>=18&&state.criticalEnabled){
       entry.status='critical';el('attackCard').classList.add('crit');
-      el('attackDetail').textContent='Natürliche 20 – automatischer Treffer';
+      el('attackDetail').textContent=natural===20?'Natürliche 20 – automatischer Treffer':'W20: '+natural+' – Krit-Chance, Angriff muss treffen';
       var confirmationNatural=randomDie(20),confirmationTotal=confirmationNatural+value.attackBonus;
       var multiplier=Number(attack.criticalMultiplier)||2;
       var criticalRoll=rollDice(Number(attack.diceCount)*multiplier,Number(attack.diceSides));
@@ -263,10 +291,12 @@
       entry.confirmationNatural=confirmationNatural;entry.confirmationTotal=confirmationTotal;
       entry.criticalRolls=criticalRoll.rolls;entry.criticalTotal=criticalTotal;
       el('confirmationResult').textContent='1W20 '+signed(value.attackBonus)+' → '+confirmationTotal;
-      el('confirmationDetail').textContent='W20: '+confirmationNatural+' · Muss die gegnerische Verteidigung treffen.';
+      el('confirmationDetail').textContent='W20: '+confirmationNatural+' · '+(confirmationNatural===1?'Automatischer Fehlschlag – kein kritischer Treffer.':confirmationNatural===20?'Bestätigung trifft automatisch.':'Bestätigung muss die gegnerische Verteidigung treffen.')+(natural<20?' Auch der ursprüngliche Angriff muss treffen.':'');
       el('criticalDamage').textContent=criticalTotal;
       el('criticalDetail').textContent=(Number(attack.diceCount)*multiplier)+'W'+attack.diceSides+' '+signed(value.damageBonus*multiplier)+' · Würfel: '+criticalRoll.rolls.join(', ')+extraDetail;
       el('criticalCard').classList.remove('hidden');
+    }else if(natural===20){
+      el('attackDetail').textContent='Natürliche 20 – automatischer Treffer · Gegner kritisch immun';
     }
     state.history.unshift(entry);if(state.history.length>300)state.history.length=300;
     state.advanceBeforeRoll=true;
@@ -356,6 +386,7 @@
   el('powerEnabled').onchange=function(){state.powerEnabled=this.checked;save();renderFight()};
   el('expertiseValue').onchange=function(){state.expertiseValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
   el('powerValue').onchange=function(){state.powerValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
+  el('criticalEnabled').onchange=function(){state.criticalEnabled=this.checked;save();renderFight();clearResults()};
   el('extraDamageEnabled').onchange=function(){state.extraDamageEnabled=this.checked;save();renderFight();clearResults()};
   el('extraDamageDice').onchange=function(){state.extraDamageDice=Number(this.value);normalizeExtraDamage(state);save();renderFight();clearResults()};
   el('addAttack').onclick=function(){state.attacks.push({name:'Neuer Angriff',extraDamageEligible:false,baseAttack:0,diceCount:1,diceSides:6,baseDamage:0,criticalMultiplier:2});state.currentAttack=state.attacks.length-1;state.advanceBeforeRoll=false;save();renderAll();clearResults()};
@@ -370,3 +401,4 @@
 </script>
 </body>
 </html>
+
