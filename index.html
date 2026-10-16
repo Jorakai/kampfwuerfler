@@ -34,13 +34,15 @@
       .combat-results{gap:8px;margin-top:8px!important}.combat-results .result{min-height:145px;padding:10px 7px}.combat-results .big{font-size:2.6rem;margin:8px 0}.combat-results .cap{font-size:.64rem;letter-spacing:.06em}.combat-results .formula,.combat-results .detail{font-size:.72rem}.notice{padding:7px 9px;font-size:.72rem}
       #criticalCard h2{font-size:.95rem;margin:8px 0}#criticalCard h1{font-size:1.5rem}#criticalCard hr{margin:8px 0!important}.bar{padding-top:7px;gap:6px}.bar .btn{min-height:44px}.bar-status{font-size:.8rem}
     }
+    .view.offhand .attack-controls,.view.offhand .combat-results .result:not(.fail):not(.crit){background:#142f47;border-color:#4579a6}
+    .bar.offhand{background:#102b42f5;border-top-color:#6aa4d4}
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9.1</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -233,6 +235,9 @@
   }
   function renderFight(){
     var value=current(),attack=value.attack;
+    var isOffhand=/Nebenhand/i.test(attack.name);
+    el('fight').classList.toggle('offhand',isOffhand);
+    el('fightBar').classList.toggle('offhand',isOffhand);
     el('counter').textContent=state.counter;
     el('attackSelect').innerHTML=state.attacks.map(function(item,index){return'<option value="'+index+'">'+escapeHtml(item.name)+'</option>'}).join('');
     el('attackSelect').value=state.currentAttack;
