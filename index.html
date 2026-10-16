@@ -36,13 +36,20 @@
     }
     .view.offhand .attack-controls,.view.offhand .combat-results .result:not(.fail):not(.crit){background:#142f47;border-color:#4579a6}
     .bar.offhand{background:#102b42f5;border-top-color:#6aa4d4}
+    .healing-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+    .healing-modes .btn{min-height:44px;font-size:.82rem;padding:10px 6px}
+    .healing-modes [aria-pressed="true"]{background:var(--gold);color:#181206}
+    #healing .healing-result{min-height:145px}
+    .healing-action{position:fixed;bottom:0;left:0;right:0;z-index:8;background:#090d12f5;border-top:1px solid var(--line);padding:10px max(10px,calc((100vw - 720px)/2 + 14px)) calc(10px + env(safe-area-inset-bottom))}
+    .healing-action .btn{width:100%;min-height:46px}
+    @media(max-width:609px){#healing .healing-result{min-height:125px}#healing .big{font-size:2.6rem;margin:8px 0}#healing input,#healing select{padding:8px}#healing .detail{font-size:.75rem}#healing .formula{margin-top:4px}}
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9.3</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9.4</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -90,29 +97,35 @@
   </section>
 
   <section id="healing" class="view">
-    <div class="card">
-      <h2>Heilung würfeln</h2>
-      <div class="grid2">
-        <label>Anzahl der Würfel<input id="healingDiceCount" type="number" min="1" step="1" inputmode="numeric"></label>
-        <label>Würfelseiten<select id="healingDiceSides"><option value="4">W4</option><option value="6">W6</option><option value="8">W8</option><option value="10">W10</option><option value="12">W12</option><option value="20">W20</option></select></label>
+    <div class="healing-modes" role="group" aria-label="Heilungsart">
+      <button class="btn secondary" id="healNormalMode" aria-pressed="true">Normale Heilung</button>
+      <button class="btn secondary" id="healBattleMode" aria-pressed="false">Gefechtsheiler · 5W10</button>
+    </div>
+    <div id="normalHealing">
+      <div class="card">
+        <div class="grid2">
+          <label>Würfelanzahl<input id="healingDiceCount" type="number" min="1" step="1" inputmode="numeric"></label>
+          <label>Würfelseiten<select id="healingDiceSides"><option value="4">W4</option><option value="6">W6</option><option value="8">W8</option><option value="10">W10</option><option value="12">W12</option><option value="20">W20</option></select></label>
+        </div>
       </div>
+      <div class="card result healing-result" aria-live="polite">
+        <div class="cap">Heilung</div><div class="formula" id="healingFormula"></div>
+        <div class="big healingText" id="healingResult">–</div>
+        <div class="detail" id="healingDetail">Noch nicht gewürfelt</div>
+      </div>
+      <div class="healing-action"><button class="btn primary" id="rollHealing">Heilung würfeln</button></div>
     </div>
-    <div class="card result">
-      <div class="cap">Heilung</div><div class="formula" id="healingFormula"></div>
-      <div class="big healingText" id="healingResult">–</div>
-      <div class="detail" id="healingDetail">Noch nicht gewürfelt</div>
-    </div>
-    <button class="btn primary" style="width:100%;padding:16px" id="rollHealing">Heilung würfeln</button>
-    <div class="card" style="margin-top:12px">
-      <h2>Gefechtsheiler · 5W10</h2>
-      <p class="detail">Wenn du einen sterbenden Charakter mit den Tekō stabilisierst: zusätzlich 5W10 Trefferpunkte + Konstitutionsbonus des Verwundeten.</p>
-      <label>Konstitutionsbonus des Verwundeten<input id="battleHealerBonus" type="number" step="1" value="0"></label>
-      <div style="text-align:center;padding:12px 0" aria-live="polite">
-        <div class="formula" id="battleHealerFormula"></div>
+    <div id="battleHealing" class="hidden">
+      <div class="card">
+        <label>Konstitutionsbonus des Verwundeten<input id="battleHealerBonus" type="number" step="1" value="0"></label>
+        <details class="combat-options"><summary>Wann gilt Gefechtsheiler?</summary><p class="detail">Wenn du einen sterbenden Charakter mit den Tekō stabilisierst: zusätzlich 5W10 Trefferpunkte + Konstitutionsbonus des Verwundeten.</p></details>
+      </div>
+      <div class="card result healing-result" aria-live="polite">
+        <div class="cap">Gefechtsheiler</div><div class="formula" id="battleHealerFormula"></div>
         <div class="big healingText" id="battleHealerResult">–</div>
         <div class="detail" id="battleHealerDetail">Noch nicht gewürfelt</div>
       </div>
-      <button class="btn primary" style="width:100%;min-height:44px" id="rollBattleHealer">Gefechtsheiler würfeln · 5W10</button>
+      <div class="healing-action"><button class="btn primary" id="rollBattleHealer">Gefechtsheiler würfeln · 5W10</button></div>
     </div>
   </section>
 
@@ -319,7 +332,16 @@
     state.advanceBeforeRoll=true;
     save();renderFight();
   }
+  function showHealingMode(mode){
+    state.healingMode=mode;
+    el('normalHealing').classList.toggle('hidden',mode!=='normal');
+    el('battleHealing').classList.toggle('hidden',mode!=='battle');
+    el('healNormalMode').setAttribute('aria-pressed',String(mode==='normal'));
+    el('healBattleMode').setAttribute('aria-pressed',String(mode==='battle'));
+    save();
+  }
   function renderHealing(){
+    showHealingMode(state.healingMode==='battle'?'battle':'normal');
     el('battleHealerBonus').value=state.battleHealerBonus;
     el('battleHealerFormula').textContent='5W10 '+signed(state.battleHealerBonus);
     el('healingDiceCount').value=state.healingDiceCount;
@@ -417,6 +439,8 @@
   });
   el('healingDiceCount').onchange=changeHealing;
   el('healingDiceSides').onchange=changeHealing;
+  el('healNormalMode').onclick=function(){showHealingMode('normal')};
+  el('healBattleMode').onclick=function(){showHealingMode('battle')};
   el('rollHealing').onclick=performHealing;
   el('battleHealerBonus').onchange=changeBattleHealerBonus;
   el('rollBattleHealer').onclick=performBattleHealer;
