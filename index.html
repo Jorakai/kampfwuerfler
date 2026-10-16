@@ -173,15 +173,15 @@
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={schemaVersion:9,criticalEnabled:true,counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
-    {name:'1. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'1. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'2. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'2. Nebenhandangriff',extraDamageEligible:false,baseAttack:72,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'3. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'4. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'5. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'1-2-Schlag',extraDamageEligible:true,baseAttack:78,diceCount:4,diceSides:12,baseDamage:24,criticalMultiplier:2}
+  var DEFAULTS={schemaVersion:10,criticalEnabled:true,counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+    {name:'1. Basisangriff',extraDamageEligible:true,baseAttack:92,diceCount:4,diceSides:12,baseDamage:21,criticalMultiplier:2},
+    {name:'1. Nebenhandangriff',extraDamageEligible:false,baseAttack:92,diceCount:4,diceSides:12,baseDamage:21,criticalMultiplier:2},
+    {name:'2. Basisangriff',extraDamageEligible:true,baseAttack:92,diceCount:4,diceSides:12,baseDamage:21,criticalMultiplier:2},
+    {name:'2. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:21,criticalMultiplier:2},
+    {name:'3. Basisangriff',extraDamageEligible:true,baseAttack:92,diceCount:4,diceSides:12,baseDamage:21,criticalMultiplier:2},
+    {name:'4. Basisangriff',extraDamageEligible:true,baseAttack:92,diceCount:4,diceSides:12,baseDamage:21,criticalMultiplier:2},
+    {name:'5. Basisangriff',extraDamageEligible:true,baseAttack:92,diceCount:4,diceSides:12,baseDamage:21,criticalMultiplier:2},
+    {name:'1-2-Schlag',extraDamageEligible:true,baseAttack:88,diceCount:4,diceSides:12,baseDamage:19,criticalMultiplier:2}
   ]};
   function clone(x){return JSON.parse(JSON.stringify(x))}
   function load(){try{var x=JSON.parse(localStorage.getItem(STORAGE_KEY));return x&&x.attacks&&x.attacks.length?x:clone(DEFAULTS)}catch(err){return clone(DEFAULTS)}}
@@ -198,9 +198,9 @@
   }
   var state=normalizeExtraDamage(load());
   // One-time level-up: keep history, counter, healing and combat options.
-  if(Number(state.schemaVersion)<9||state.schemaVersion==null){
+  if(Number(state.schemaVersion)<10||state.schemaVersion==null){
     state.attacks=clone(DEFAULTS.attacks);state.currentAttack=0;state.advanceBeforeRoll=false;
-    state.schemaVersion=9;
+    state.schemaVersion=10;
   }
   if(typeof state.criticalEnabled!=='boolean')state.criticalEnabled=true;
   save();
