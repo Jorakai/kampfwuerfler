@@ -42,7 +42,7 @@
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9.2</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9.3</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -103,6 +103,17 @@
       <div class="detail" id="healingDetail">Noch nicht gewürfelt</div>
     </div>
     <button class="btn primary" style="width:100%;padding:16px" id="rollHealing">Heilung würfeln</button>
+    <div class="card" style="margin-top:12px">
+      <h2>Gefechtsheiler · 5W10</h2>
+      <p class="detail">Wenn du einen sterbenden Charakter mit den Tekō stabilisierst: zusätzlich 5W10 Trefferpunkte + Konstitutionsbonus des Verwundeten.</p>
+      <label>Konstitutionsbonus des Verwundeten<input id="battleHealerBonus" type="number" step="1" value="0"></label>
+      <div style="text-align:center;padding:12px 0" aria-live="polite">
+        <div class="formula" id="battleHealerFormula"></div>
+        <div class="big healingText" id="battleHealerResult">–</div>
+        <div class="detail" id="battleHealerDetail">Noch nicht gewürfelt</div>
+      </div>
+      <button class="btn primary" style="width:100%;min-height:44px" id="rollBattleHealer">Gefechtsheiler würfeln · 5W10</button>
+    </div>
   </section>
 
   <section id="history" class="view">
@@ -175,7 +186,7 @@
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={schemaVersion:11,criticalEnabled:true,counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+  var DEFAULTS={schemaVersion:11,criticalEnabled:true,counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,battleHealerBonus:0,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
     {name:'1. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'1. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'2. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
@@ -194,6 +205,7 @@
     value.attacks.forEach(function(attack,index){
       if(typeof attack.extraDamageEligible!=='boolean')attack.extraDamageEligible=index!==1&&index!==2;
     });
+    value.battleHealerBonus=Number.isSafeInteger(Number(value.battleHealerBonus))?Number(value.battleHealerBonus):0;
     value.healingDiceCount=Number.isFinite(Number(value.healingDiceCount))&&Number(value.healingDiceCount)>=1?Math.floor(Number(value.healingDiceCount)):15;
     value.healingDiceSides=[4,6,8,10,12,20].indexOf(Number(value.healingDiceSides))!==-1?Number(value.healingDiceSides):6;
     return value;
@@ -308,11 +320,14 @@
     save();renderFight();
   }
   function renderHealing(){
+    el('battleHealerBonus').value=state.battleHealerBonus;
+    el('battleHealerFormula').textContent='5W10 '+signed(state.battleHealerBonus);
     el('healingDiceCount').value=state.healingDiceCount;
     el('healingDiceSides').value=state.healingDiceSides;
     el('healingFormula').textContent=state.healingDiceCount+'W'+state.healingDiceSides;
   }
   function clearHealing(){
+    el('battleHealerResult').textContent='–';el('battleHealerDetail').textContent='Noch nicht gewürfelt';
     el('healingResult').textContent='–';
     el('healingDetail').textContent='Noch nicht gewürfelt';
   }
@@ -335,12 +350,31 @@
     if(state.history.length>300)state.history.length=300;
     save();
   }
+  function changeBattleHealerBonus(){
+    var field=el('battleHealerBonus'),bonus=Number(field.value);
+    if(field.value.trim()===''||!Number.isSafeInteger(bonus)){
+      field.setCustomValidity('Bitte einen ganzen Konstitutionsbonus eingeben.');field.reportValidity();return false;
+    }
+    field.setCustomValidity('');state.battleHealerBonus=bonus;save();
+    el('battleHealerFormula').textContent='5W10 '+signed(bonus);
+    el('battleHealerResult').textContent='–';el('battleHealerDetail').textContent='Noch nicht gewürfelt';
+    return true;
+  }
+  function performBattleHealer(){
+    if(!changeBattleHealerBonus())return;
+    var result=rollDice(5,10),total=result.sum+state.battleHealerBonus;
+    el('battleHealerResult').textContent=total;
+    el('battleHealerDetail').textContent='Würfel: '+result.rolls.join(' + ')+' · KON '+signed(state.battleHealerBonus);
+    state.history.unshift({type:'healing',name:'Gefechtsheiler',time:Date.now(),diceCount:5,diceSides:10,bonus:state.battleHealerBonus,rolls:result.rolls,total:total});
+    if(state.history.length>300)state.history.length=300;
+    save();
+  }
   function renderHistory(){
     var host=el('historyList');
     if(!state.history.length){host.innerHTML='<div class="card empty">Noch keine Würfe gespeichert.</div>';return}
     host.innerHTML=state.history.map(function(item){
       if(item.type==='healing'){
-        return '<div class="card history healing"><div class="histhead"><b class="healingText">Heilung '+item.diceCount+'W'+item.diceSides+'</b><span class="detail">'+new Date(item.time).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</span></div><p>Geheilt: <b>'+item.total+'</b></p><p class="detail">Würfel: '+item.rolls.join(', ')+'</p></div>';
+        return '<div class="card history healing"><div class="histhead"><b class="healingText">'+escapeHtml(item.name||'Heilung')+' '+item.diceCount+'W'+item.diceSides+(item.bonus!=null?' '+signed(item.bonus):'')+'</b><span class="detail">'+new Date(item.time).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</span></div><p>Geheilt: <b>'+item.total+'</b></p><p class="detail">Würfel: '+item.rolls.join(', ')+(item.bonus!=null?' · KON '+signed(item.bonus):'')+'</p></div>';
       }
       var extra=item.extraDamageRolls&&item.extraDamageRolls.length?' · Zusatz '+item.extraDamageRolls.length+'W6: '+item.extraDamageRolls.join(', ')+' = '+item.extraDamageTotal:'';
       var critical=item.confirmationTotal!=null?'<p class="gold">Bestätigung: '+item.confirmationTotal+' (W20: '+item.confirmationNatural+')<br>Möglicher kritischer Schaden: <b>'+item.criticalTotal+'</b></p>':'';
@@ -384,6 +418,8 @@
   el('healingDiceCount').onchange=changeHealing;
   el('healingDiceSides').onchange=changeHealing;
   el('rollHealing').onclick=performHealing;
+  el('battleHealerBonus').onchange=changeBattleHealerBonus;
+  el('rollBattleHealer').onclick=performBattleHealer;
   el('rollAttack').onclick=performAttack;
   el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);state.advanceBeforeRoll=false;save();renderFight();clearResults()};
   el('resetCounter').onclick=function(){if(confirm('Counter zurücksetzen und bei Angriff 1 beginnen?')){state.counter=0;state.currentAttack=0;state.advanceBeforeRoll=false;save();renderFight();clearResults()}};
