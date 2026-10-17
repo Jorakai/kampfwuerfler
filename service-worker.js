@@ -1,4 +1,4 @@
-const CACHE_NAME = "kampfwuerfler-v9-4";
+const CACHE_NAME = "kampfwuerfler-v10";
 const APP_FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", event => {
