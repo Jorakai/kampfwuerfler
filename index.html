@@ -43,18 +43,24 @@
     .healing-action{position:fixed;bottom:0;left:0;right:0;z-index:8;background:#090d12f5;border-top:1px solid var(--line);padding:10px max(10px,calc((100vw - 720px)/2 + 14px)) calc(10px + env(safe-area-inset-bottom))}
     .healing-action .btn{width:100%;min-height:46px}
     @media(max-width:609px){#healing .healing-result{min-height:125px}#healing .big{font-size:2.6rem;margin:8px 0}#healing input,#healing select{padding:8px}#healing .detail{font-size:.75rem}#healing .formula{margin-top:4px}}
+    .fight-modifiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:8px 0 5px}
+    .fight-modifiers label{font-size:.72rem;min-width:0}
+    .fight-modifiers select{font-size:16px;padding:7px 4px;min-height:40px;margin-top:3px}
+    #optionNotice{padding:3px 0;border:0;background:none;font-size:.7rem;line-height:1.3}
+    .hp-summary{text-align:center}.hp-summary .big{font-size:2.5rem;margin:10px 0}.hp-max{font-size:1.15rem;color:var(--muted)}#health .btn{min-height:44px;font-size:.8rem}#hpFeedback:empty{display:none}#health .detail{line-height:1.4}
+    #hpCurrentInput{display:inline-block;width:150px;max-width:60%;margin:0;padding:4px 8px;text-align:center;color:var(--green);font-size:2.1rem;font-weight:850}
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 9.4</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
       <button class="tab active" data-view="fight">Kampf</button>
-      <button class="tab" data-view="quick">Würfel</button>
+      <button class="tab" data-view="health">TP</button>
       <button class="tab" data-view="healing">Heilung</button>
       <button class="tab" data-view="history">Historie</button>
       <button class="tab" data-view="settings">Werte</button>
@@ -74,6 +80,11 @@
       </select></label>
       </details>
     </div>
+    <div class="fight-modifiers">
+      <label title="Kampfsachkenntnis: je Stufe −1 AB und +1 Verteidigung">Kampfsachk.<select id="fightExpertise" aria-label="Kampfsachkenntnis"><option value="0">Aus</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+      <label title="Kraftangriff: je Stufe −1 AB und +1 Schaden">Kraftangriff<select id="fightPower" aria-label="Kraftangriff"><option value="0">Aus</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+      <label title="Jede Schmerzstufe: −1 AB und −1 Schaden; maximal Stufe 4">Schmerz<select id="painLevel" aria-label="Schmerzstufe"><option value="auto">Auto</option><option value="0">0</option><option value="1">−1</option><option value="2">−2</option><option value="3">−3</option><option value="4">−4</option></select></label>
+    </div>
     <div class="notice" id="optionNotice"></div>
     <div class="split combat-results" style="margin-top:12px">
       <div class="card result" id="attackCard">
@@ -92,8 +103,33 @@
     </div>
   </section>
 
-  <section id="quick" class="view">
-    <div class="card"><div class="cap">Schnellwürfel</div><div class="quickresult" id="quickResult">–</div><div class="quickgrid" id="quickGrid"></div></div>
+  <section id="health" class="view">
+    <div class="card hp-summary">
+      <div class="cap">Trefferpunkte</div>
+      <div class="big healingText"><input id="hpCurrentInput" type="number" step="1" aria-label="Aktuelle Trefferpunkte"><span class="hp-max"> / <span id="hpMaximum"></span></span></div>
+      <div id="hpPain" class="detail"></div>
+      <div id="hpWoundInfo" class="detail"></div>
+    </div>
+    <div class="card">
+      <label>Schaden oder Heilung in TP<input id="hpAmount" type="number" min="1" step="1" inputmode="numeric" placeholder="Anzahl TP"></label>
+      <div class="grid2" style="margin-top:10px">
+        <button class="btn danger" id="takeDamage">Schaden abziehen</button>
+        <button class="btn secondary" id="receiveHealing">Heilung hinzufügen</button>
+      </div>
+      <p id="hpFeedback" class="detail" aria-live="polite"></p>
+      <button class="btn secondary" id="undoHealth" style="width:100%">Letzte TP-Änderung zurück</button>
+    </div>
+    <details class="card combat-options">
+      <summary>Wunde, maximale TP und Schmerzgrenzen</summary>
+      <div class="grid2">
+        <label>Maximale TP<input id="maxHp" type="number" min="1" step="1" inputmode="numeric"></label>
+        <label>Schmerzvolle Wunde: fehlende TP<input id="woundHp" type="number" min="0" step="1" inputmode="numeric"></label>
+      </div>
+      <p class="detail">Normale Heilung stellt die durch diese Wunde fehlenden TP nicht wieder her. Die Wunde heilt nur 1 TP pro Tag; trage das hier selbst ein.</p>
+      <button class="btn secondary" id="healWound">1 TP der Wunde geheilt</button>
+      <p id="hpThresholds" class="detail"></p>
+      <p class="detail">Schmerzgrenzen beziehen sich auf die maximalen TP. Auf der Angriffsseite kannst du „Auto“ wählen oder die Schmerzstufe selbst einstellen.</p>
+    </details>
   </section>
 
   <section id="healing" class="view">
@@ -199,7 +235,7 @@
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={schemaVersion:11,criticalEnabled:true,counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,battleHealerBonus:0,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+  var DEFAULTS={schemaVersion:11,criticalEnabled:true,painLevel:0,painAutomatic:true,maxHp:352,woundHp:31,currentHp:321,counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,battleHealerBonus:0,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
     {name:'1. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'1. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'2. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
@@ -212,6 +248,11 @@
   function clone(x){return JSON.parse(JSON.stringify(x))}
   function load(){try{var x=JSON.parse(localStorage.getItem(STORAGE_KEY));return x&&x.attacks&&x.attacks.length?x:clone(DEFAULTS)}catch(err){return clone(DEFAULTS)}}
   function normalizeExtraDamage(value){
+    value.maxHp=Number.isSafeInteger(Number(value.maxHp))&&Number(value.maxHp)>0?Number(value.maxHp):352;
+    value.woundHp=Number.isSafeInteger(Number(value.woundHp))&&Number(value.woundHp)>=0?Math.min(Number(value.woundHp),value.maxHp):Math.min(31,value.maxHp);
+    value.currentHp=Number.isSafeInteger(Number(value.currentHp))?Math.min(Number(value.currentHp),value.maxHp):value.maxHp-value.woundHp;
+    value.painAutomatic=value.painAutomatic!==false;
+    value.painLevel=Math.max(0,Math.min(4,Math.floor(Number(value.painLevel)||0)));
     value.extraDamageEnabled=value.extraDamageEnabled===true;
     if(Number(value.extraDamageDice)===5)value.extraDamageDice=6;
     value.extraDamageDice=[1,2,6].indexOf(Number(value.extraDamageDice))!==-1?Number(value.extraDamageDice):1;
@@ -256,7 +297,8 @@
     var attack=state.attacks[state.currentAttack];
     var expertise=state.expertiseEnabled?Number(state.expertiseValue):0;
     var power=state.powerEnabled?Number(state.powerValue):0;
-    return{attack:attack,attackBonus:Number(attack.baseAttack)-expertise-power,damageBonus:Number(attack.baseDamage)+power,expertise:expertise,power:power}
+    var pain=state.painAutomatic?health().pain:state.painLevel;
+    return{attack:attack,attackBonus:Number(attack.baseAttack)-expertise-power-pain,damageBonus:Number(attack.baseDamage)+power-pain,expertise:expertise,power:power,pain:pain}
   }
   function renderFight(){
     var value=current(),attack=value.attack;
@@ -272,6 +314,9 @@
     el('barPosition').textContent=(state.currentAttack+1)+' / '+state.attacks.length;
     var nextIndex=state.advanceBeforeRoll?(state.currentAttack+1)%state.attacks.length:state.currentAttack;
     el('nextAttack').textContent='Nächster Wurf: '+state.attacks[nextIndex].name;
+    el('fightExpertise').value=value.expertise;
+    el('fightPower').value=value.power;
+    el('painLevel').value=state.painAutomatic?'auto':value.pain;
     el('criticalEnabled').checked=state.criticalEnabled;
     el('rollAttack').textContent=state.advanceBeforeRoll?'Nächsten Angriff würfeln':'Angriff würfeln';
     el('attackFormula').textContent='1W20 '+signed(value.attackBonus);
@@ -280,10 +325,11 @@
     el('extraDamageDice').disabled=!state.extraDamageEnabled;
     el('damageFormula').textContent=attack.diceCount+'W'+attack.diceSides+' '+signed(value.damageBonus)+(state.extraDamageEnabled&&attack.extraDamageEligible?' + '+state.extraDamageDice+'W6':'');
     var options=[];
-    if(value.expertise)options.push('Kampfsachkenntnis '+value.expertise+' · Verteidigung +'+value.expertise);
-    if(value.power)options.push('Kraftangriff '+value.power);
-    if(state.extraDamageEnabled)options.push(attack.extraDamageEligible?'Alnar-Keth: +'+state.extraDamageDice+'W6':'Kein Alnar-Keth-Zusatzschaden bei diesem Angriff');
-    el('optionNotice').textContent=options.length?options.join(' | '):'Keine Kampfoption aktiv';
+    if(value.expertise)options.push('VTD +'+value.expertise);
+    if(value.pain)options.push('Schmerz: −'+value.pain+' AB / Schaden');
+    if(state.extraDamageEnabled)options.push(attack.extraDamageEligible?'Alnar-Keth: +'+state.extraDamageDice+'W6':'Nebenhand: kein Zusatzschaden');
+    el('optionNotice').textContent=options.join(' · ');
+    el('optionNotice').classList.toggle('hidden',!options.length);
   }
   function clearResults(){
     el('attackResult').textContent='–';el('damageResult').textContent='–';
@@ -427,14 +473,69 @@
       host.appendChild(box);
     });
   }
-  function renderAll(){renderFight();renderHealing();renderHistory();renderSettings()}
+  function health(){
+    var hp=state.currentHp;
+    var pain=hp<=5?4:hp<=state.maxHp*.25?3:hp<=state.maxHp*.5?2:hp<=state.maxHp*.75?1:0;
+    return{hp:hp,pain:pain};
+  }
+  function renderHealth(){
+    var value=health();
+    el('hpCurrentInput').value=value.hp;el('hpMaximum').textContent=state.maxHp;
+    el('hpPain').textContent='Schmerzstufe '+value.pain+' · −'+value.pain+' AB / Schaden';
+    el('hpWoundInfo').textContent='Schmerzvolle Wunde: −'+state.woundHp+' TP';
+    el('maxHp').value=state.maxHp;el('woundHp').value=state.woundHp;
+    el('hpThresholds').textContent='Stufe 1: ≤ '+Math.floor(state.maxHp*.75)+' TP · Stufe 2: ≤ '+Math.floor(state.maxHp*.5)+' TP · Stufe 3: ≤ '+Math.floor(state.maxHp*.25)+' TP · Stufe 4: ≤ 5 TP';
+    el('undoHealth').disabled=!state.hpPrevious;
+    el('healWound').disabled=state.woundHp===0;
+  }
+  function rememberHealth(){
+    state.hpPrevious={maxHp:state.maxHp,woundHp:state.woundHp,currentHp:state.currentHp};
+  }
+  function refreshHealth(){save();renderHealth();renderFight();clearResults()}
+  function applyHealth(healing){
+    var field=el('hpAmount'),amount=Number(field.value);
+    if(field.value.trim()===''||!Number.isSafeInteger(amount)||amount<1){
+      field.setCustomValidity('Bitte eine ganze TP-Anzahl ab 1 eingeben.');field.reportValidity();return;
+    }
+    if(!healing&&!Number.isSafeInteger(state.currentHp-amount)){
+      field.setCustomValidity('Diese TP-Anzahl ist zu groß.');field.reportValidity();return;
+    }
+    field.setCustomValidity('');
+    var applied=healing?Math.min(amount,Math.max(0,state.maxHp-state.woundHp-state.currentHp)):amount;
+    if(!applied){el('hpFeedback').textContent='Keine normal heilbaren TP fehlen. Die schmerzvolle Wunde bleibt bestehen.';return}
+    rememberHealth();
+    state.currentHp+=healing?applied:-applied;
+    el('hpFeedback').textContent=(healing?applied+' TP geheilt.':applied+' Schaden abgezogen.');
+    field.value='';refreshHealth();
+  }
+  function changeHealthStats(){
+    var max=Number(el('maxHp').value),wound=Number(el('woundHp').value);
+    el('maxHp').setCustomValidity('');el('woundHp').setCustomValidity('');
+    if(!Number.isSafeInteger(max)||max<1){el('maxHp').setCustomValidity('Bitte maximale TP ab 1 eingeben.');el('maxHp').reportValidity();return}
+    if(el('woundHp').value.trim()===''||!Number.isSafeInteger(wound)||wound<0||wound>max){el('woundHp').setCustomValidity('Bitte fehlende Wunden-TP zwischen 0 und maximalen TP eingeben.');el('woundHp').reportValidity();return}
+    rememberHealth();state.currentHp=Math.min(max,state.currentHp+state.woundHp-wound);state.maxHp=max;state.woundHp=wound;
+    el('hpFeedback').textContent='TP-Werte aktualisiert.';refreshHealth();
+  }
+  el('hpCurrentInput').onchange=function(){
+    var value=Number(this.value);this.setCustomValidity('');
+    if(this.value.trim()===''||!Number.isSafeInteger(value)||value>state.maxHp){this.setCustomValidity('Bitte ganze aktuelle TP bis '+state.maxHp+' eingeben.');this.reportValidity();return}
+    rememberHealth();state.currentHp=value;el('hpFeedback').textContent='Aktuelle TP angepasst.';refreshHealth();
+  };
+  el('hpCurrentInput').oninput=function(){this.setCustomValidity('')};
+  el('takeDamage').onclick=function(){applyHealth(false)};
+  el('receiveHealing').onclick=function(){applyHealth(true)};
+  el('hpAmount').oninput=function(){this.setCustomValidity('')};
+  el('maxHp').onchange=changeHealthStats;el('woundHp').onchange=changeHealthStats;
+  el('healWound').onclick=function(){if(state.woundHp>0){rememberHealth();state.woundHp--;state.currentHp=Math.min(state.maxHp,state.currentHp+1);el('hpFeedback').textContent='1 TP der schmerzvollen Wunde wiederhergestellt.';refreshHealth()}};
+  el('undoHealth').onclick=function(){if(state.hpPrevious){var old=state.hpPrevious;state.maxHp=old.maxHp;state.woundHp=old.woundHp;state.currentHp=old.currentHp;delete state.hpPrevious;el('hpFeedback').textContent='Letzte TP-Änderung zurückgenommen.';refreshHealth()}};
+  function renderAll(){renderFight();renderHealing();renderHealth();renderHistory();renderSettings()}
   document.querySelectorAll('.tab').forEach(function(tab){
     tab.onclick=function(){
       document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
       document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
       tab.classList.add('active');el(tab.dataset.view).classList.add('active');
       el('fightBar').classList.toggle('hidden',tab.dataset.view!=='fight');
-      if(tab.dataset.view==='healing')renderHealing();if(tab.dataset.view==='history')renderHistory();if(tab.dataset.view==='settings')renderSettings();
+      if(tab.dataset.view==='health')renderHealth();if(tab.dataset.view==='healing')renderHealing();if(tab.dataset.view==='history')renderHistory();if(tab.dataset.view==='settings')renderSettings();
     };
   });
   el('healingDiceCount').onchange=changeHealing;
@@ -447,10 +548,13 @@
   el('rollAttack').onclick=performAttack;
   el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);state.advanceBeforeRoll=false;save();renderFight();clearResults()};
   el('resetCounter').onclick=function(){if(confirm('Counter zurücksetzen und bei Angriff 1 beginnen?')){state.counter=0;state.currentAttack=0;state.advanceBeforeRoll=false;save();renderFight();clearResults()}};
-  el('expertiseEnabled').onchange=function(){state.expertiseEnabled=this.checked;save();renderFight()};
-  el('powerEnabled').onchange=function(){state.powerEnabled=this.checked;save();renderFight()};
-  el('expertiseValue').onchange=function(){state.expertiseValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
-  el('powerValue').onchange=function(){state.powerValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll()};
+  el('fightExpertise').onchange=function(){var value=Number(this.value);state.expertiseEnabled=value>0;if(value>0)state.expertiseValue=value;save();renderAll();clearResults()};
+  el('fightPower').onchange=function(){var value=Number(this.value);state.powerEnabled=value>0;if(value>0)state.powerValue=value;save();renderAll();clearResults()};
+  el('painLevel').onchange=function(){state.painAutomatic=this.value==='auto';if(!state.painAutomatic)state.painLevel=Math.max(0,Math.min(4,Math.floor(Number(this.value)||0)));save();renderFight();clearResults()};
+  el('expertiseEnabled').onchange=function(){state.expertiseEnabled=this.checked;save();renderFight();clearResults()};
+  el('powerEnabled').onchange=function(){state.powerEnabled=this.checked;save();renderFight();clearResults()};
+  el('expertiseValue').onchange=function(){state.expertiseValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll();clearResults()};
+  el('powerValue').onchange=function(){state.powerValue=Math.max(0,Math.min(5,Number(this.value)||0));save();renderAll();clearResults()};
   el('criticalEnabled').onchange=function(){state.criticalEnabled=this.checked;save();renderFight();clearResults()};
   el('extraDamageEnabled').onchange=function(){state.extraDamageEnabled=this.checked;save();renderFight();clearResults()};
   el('extraDamageDice').onchange=function(){state.extraDamageDice=Number(this.value);normalizeExtraDamage(state);save();renderFight();clearResults()};
@@ -459,7 +563,6 @@
   el('resetAll').onclick=function(){if(confirm('Alle Änderungen, Würfe und die Historie löschen?')){state=clone(DEFAULTS);save();renderAll();clearResults();clearHealing()}};
   el('exportButton').onclick=function(){var url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));var link=document.createElement('a');link.href=url;link.download='kampfwuerfler-sicherung.json';link.click();setTimeout(function(){URL.revokeObjectURL(url)},500)};
   el('importFile').onchange=function(){var file=this.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var imported=JSON.parse(reader.result);if(!imported.attacks||!imported.attacks.length)throw new Error();state=normalizeExtraDamage(imported);save();renderAll();clearResults();clearHealing();alert('Sicherung wurde importiert.')}catch(err){alert('Diese Sicherungsdatei ist ungültig.')}};reader.readAsText(file)};
-  [4,6,8,10,12,20,100].forEach(function(sides){var button=document.createElement('button');button.className='diebtn';button.textContent='W'+sides;button.onclick=function(){el('quickResult').textContent='W'+sides+': '+randomDie(sides)};el('quickGrid').appendChild(button)});
   renderAll();clearResults();
   if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./service-worker.js')})}
 })();
