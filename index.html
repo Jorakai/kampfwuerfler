@@ -49,13 +49,14 @@
     #optionNotice{padding:3px 0;border:0;background:none;font-size:.7rem;line-height:1.3}
     .hp-summary{text-align:center}.hp-summary .big{font-size:2.5rem;margin:10px 0}.hp-max{font-size:1.15rem;color:var(--muted)}#health .btn{min-height:44px;font-size:.8rem}#hpFeedback:empty{display:none}#health .detail{line-height:1.4}
     #hpCurrentInput{display:inline-block;width:150px;max-width:60%;margin:0;padding:4px 8px;text-align:center;color:var(--green);font-size:2.1rem;font-weight:850}
+    .hp-log-entry{padding:9px 0;border-top:1px solid var(--line);font-size:.82rem}.hp-undone{opacity:.55}.hp-undone>b{text-decoration:line-through}
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10.1</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -117,8 +118,11 @@
         <button class="btn secondary" id="receiveHealing">Heilung hinzufügen</button>
       </div>
       <p id="hpFeedback" class="detail" aria-live="polite"></p>
-      <button class="btn secondary" id="undoHealth" style="width:100%">Letzte TP-Änderung zurück</button>
+      <button class="btn secondary" id="undoHealth" style="width:100%">↶ Rückgängig</button>
     </div>
+    <details class="card combat-options">
+      <summary>TP-Verlauf</summary><div id="hpLog"></div>
+    </details>
     <details class="card combat-options">
       <summary>Wunde, maximale TP und Schmerzgrenzen</summary>
       <div class="grid2">
@@ -251,6 +255,7 @@
     value.maxHp=Number.isSafeInteger(Number(value.maxHp))&&Number(value.maxHp)>0?Number(value.maxHp):352;
     value.woundHp=Number.isSafeInteger(Number(value.woundHp))&&Number(value.woundHp)>=0?Math.min(Number(value.woundHp),value.maxHp):Math.min(31,value.maxHp);
     value.currentHp=Number.isSafeInteger(Number(value.currentHp))?Math.min(Number(value.currentHp),value.maxHp):value.maxHp-value.woundHp;
+    value.hpChanges=Array.isArray(value.hpChanges)?value.hpChanges.slice(0,100):[];
     value.painAutomatic=value.painAutomatic!==false;
     value.painLevel=Math.max(0,Math.min(4,Math.floor(Number(value.painLevel)||0)));
     value.extraDamageEnabled=value.extraDamageEnabled===true;
@@ -485,13 +490,22 @@
     el('hpWoundInfo').textContent='Schmerzvolle Wunde: −'+state.woundHp+' TP';
     el('maxHp').value=state.maxHp;el('woundHp').value=state.woundHp;
     el('hpThresholds').textContent='Stufe 1: ≤ '+Math.floor(state.maxHp*.75)+' TP · Stufe 2: ≤ '+Math.floor(state.maxHp*.5)+' TP · Stufe 3: ≤ '+Math.floor(state.maxHp*.25)+' TP · Stufe 4: ≤ 5 TP';
-    el('undoHealth').disabled=!state.hpPrevious;
+    el('undoHealth').disabled=!state.hpChanges.some(function(entry){return !entry.undone})&&!state.hpPrevious;
+    el('hpLog').innerHTML=state.hpChanges.length?state.hpChanges.map(function(entry){
+      var time=new Date(entry.time).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var wound=entry.before.woundHp!==entry.after.woundHp?' · Wunde '+entry.before.woundHp+' → '+entry.after.woundHp:'';
+      return '<div class="hp-log-entry'+(entry.undone?' hp-undone':'')+'"><b>'+escapeHtml(entry.label)+'</b> · '+entry.before.currentHp+' → '+entry.after.currentHp+' TP'+wound+'<div class="detail">'+time+(entry.undone?' · rückgängig gemacht':'')+'</div></div>';
+    }).join(''):'<p class="detail">Noch keine TP-Änderungen.</p>';
     el('healWound').disabled=state.woundHp===0;
   }
-  function rememberHealth(){
+  function rememberHealth(label){
     state.hpPrevious={maxHp:state.maxHp,woundHp:state.woundHp,currentHp:state.currentHp};
+    state.hpPending={time:Date.now(),label:label,before:clone(state.hpPrevious)};
   }
-  function refreshHealth(){save();renderHealth();renderFight();clearResults()}
+  function refreshHealth(){
+    if(state.hpPending){state.hpPending.after={maxHp:state.maxHp,woundHp:state.woundHp,currentHp:state.currentHp};state.hpChanges.unshift(state.hpPending);state.hpChanges=state.hpChanges.slice(0,100);delete state.hpPending}
+    save();renderHealth();renderFight();clearResults();
+  }
   function applyHealth(healing){
     var field=el('hpAmount'),amount=Number(field.value);
     if(field.value.trim()===''||!Number.isSafeInteger(amount)||amount<1){
@@ -503,31 +517,41 @@
     field.setCustomValidity('');
     var applied=healing?Math.min(amount,Math.max(0,state.maxHp-state.woundHp-state.currentHp)):amount;
     if(!applied){el('hpFeedback').textContent='Keine normal heilbaren TP fehlen. Die schmerzvolle Wunde bleibt bestehen.';return}
-    rememberHealth();
+    rememberHealth(healing?'Heilung +'+applied:'Schaden −'+applied);
     state.currentHp+=healing?applied:-applied;
     el('hpFeedback').textContent=(healing?applied+' TP geheilt.':applied+' Schaden abgezogen.');
-    field.value='';refreshHealth();
+    field.value='';refreshHealth();field.focus();
   }
   function changeHealthStats(){
     var max=Number(el('maxHp').value),wound=Number(el('woundHp').value);
     el('maxHp').setCustomValidity('');el('woundHp').setCustomValidity('');
     if(!Number.isSafeInteger(max)||max<1){el('maxHp').setCustomValidity('Bitte maximale TP ab 1 eingeben.');el('maxHp').reportValidity();return}
     if(el('woundHp').value.trim()===''||!Number.isSafeInteger(wound)||wound<0||wound>max){el('woundHp').setCustomValidity('Bitte fehlende Wunden-TP zwischen 0 und maximalen TP eingeben.');el('woundHp').reportValidity();return}
-    rememberHealth();state.currentHp=Math.min(max,state.currentHp+state.woundHp-wound);state.maxHp=max;state.woundHp=wound;
+    rememberHealth('Wunde / maximale TP geändert');state.currentHp=Math.min(max,state.currentHp+state.woundHp-wound);state.maxHp=max;state.woundHp=wound;
     el('hpFeedback').textContent='TP-Werte aktualisiert.';refreshHealth();
   }
   el('hpCurrentInput').onchange=function(){
     var value=Number(this.value);this.setCustomValidity('');
     if(this.value.trim()===''||!Number.isSafeInteger(value)||value>state.maxHp){this.setCustomValidity('Bitte ganze aktuelle TP bis '+state.maxHp+' eingeben.');this.reportValidity();return}
-    rememberHealth();state.currentHp=value;el('hpFeedback').textContent='Aktuelle TP angepasst.';refreshHealth();
+    rememberHealth('Aktuelle TP manuell gesetzt');state.currentHp=value;el('hpFeedback').textContent='Aktuelle TP angepasst.';refreshHealth();
   };
   el('hpCurrentInput').oninput=function(){this.setCustomValidity('')};
   el('takeDamage').onclick=function(){applyHealth(false)};
   el('receiveHealing').onclick=function(){applyHealth(true)};
   el('hpAmount').oninput=function(){this.setCustomValidity('')};
+  el('hpAmount').addEventListener('keydown',function(event){if(event.key==='Enter'){event.preventDefault();applyHealth(false)}});
   el('maxHp').onchange=changeHealthStats;el('woundHp').onchange=changeHealthStats;
-  el('healWound').onclick=function(){if(state.woundHp>0){rememberHealth();state.woundHp--;state.currentHp=Math.min(state.maxHp,state.currentHp+1);el('hpFeedback').textContent='1 TP der schmerzvollen Wunde wiederhergestellt.';refreshHealth()}};
-  el('undoHealth').onclick=function(){if(state.hpPrevious){var old=state.hpPrevious;state.maxHp=old.maxHp;state.woundHp=old.woundHp;state.currentHp=old.currentHp;delete state.hpPrevious;el('hpFeedback').textContent='Letzte TP-Änderung zurückgenommen.';refreshHealth()}};
+  el('healWound').onclick=function(){if(state.woundHp>0){rememberHealth('Wunde: 1 TP geheilt');state.woundHp--;state.currentHp=Math.min(state.maxHp,state.currentHp+1);el('hpFeedback').textContent='1 TP der schmerzvollen Wunde wiederhergestellt.';refreshHealth()}};
+  el('undoHealth').onclick=function(){
+    var entry=state.hpChanges.find(function(item){return !item.undone});
+    var previous=entry?entry.before:state.hpPrevious;
+    if(!previous)return;
+    state.maxHp=previous.maxHp;state.woundHp=previous.woundHp;state.currentHp=previous.currentHp;
+    if(entry)entry.undone=true;
+    delete state.hpPrevious;
+    el('hpFeedback').textContent=entry?'Rückgängig: '+entry.label:'Letzte TP-Änderung zurückgenommen.';
+    refreshHealth();
+  };
   function renderAll(){renderFight();renderHealing();renderHealth();renderHistory();renderSettings()}
   document.querySelectorAll('.tab').forEach(function(tab){
     tab.onclick=function(){
