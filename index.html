@@ -56,7 +56,7 @@
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10.1</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10.2</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -239,12 +239,13 @@
 (function(){
   'use strict';
   var STORAGE_KEY='kampfwuerfler_v1';
-  var DEFAULTS={schemaVersion:11,criticalEnabled:true,painLevel:0,painAutomatic:true,maxHp:352,woundHp:31,currentHp:321,hpChanges:[],counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,battleHealerBonus:0,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
+  var DEFAULTS={schemaVersion:12,criticalEnabled:true,painLevel:0,painAutomatic:true,maxHp:352,woundHp:31,currentHp:321,hpChanges:[],counter:0,currentAttack:0,advanceBeforeRoll:false,history:[],healingDiceCount:15,healingDiceSides:6,battleHealerBonus:0,extraDamageEnabled:false,extraDamageDice:1,expertiseEnabled:true,expertiseValue:5,powerEnabled:true,powerValue:5,attacks:[
     {name:'1. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'1. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'2. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
-    {name:'2. Nebenhandangriff',extraDamageEligible:false,baseAttack:72,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'2. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'3. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
+    {name:'3. Nebenhandangriff',extraDamageEligible:false,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'4. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'5. Basisangriff',extraDamageEligible:true,baseAttack:82,diceCount:4,diceSides:12,baseDamage:26,criticalMultiplier:2},
     {name:'1-2-Schlag',extraDamageEligible:true,baseAttack:78,diceCount:4,diceSides:12,baseDamage:24,criticalMultiplier:2}
@@ -262,11 +263,25 @@
     if(Number(value.extraDamageDice)===5)value.extraDamageDice=6;
     value.extraDamageDice=[1,2,6].indexOf(Number(value.extraDamageDice))!==-1?Number(value.extraDamageDice):1;
     value.attacks.forEach(function(attack,index){
-      if(typeof attack.extraDamageEligible!=='boolean')attack.extraDamageEligible=index!==1&&index!==2;
+      if(typeof attack.extraDamageEligible!=='boolean')attack.extraDamageEligible=!/Nebenhand/i.test(attack.name);
     });
     value.battleHealerBonus=Number.isSafeInteger(Number(value.battleHealerBonus))?Number(value.battleHealerBonus):0;
     value.healingDiceCount=Number.isFinite(Number(value.healingDiceCount))&&Number(value.healingDiceCount)>=1?Math.floor(Number(value.healingDiceCount)):15;
     value.healingDiceSides=[4,6,8,10,12,20].indexOf(Number(value.healingDiceSides))!==-1?Number(value.healingDiceSides):6;
+    return value;
+  }
+  function upgradeLegendary(value){
+    if(Number(value.schemaVersion)>=12)return value;
+    var previous=value.attacks,selected=previous[value.currentAttack];
+    value.attacks=DEFAULTS.attacks.map(function(template){
+      var existing=previous.find(function(attack){return attack.name===template.name});
+      var attack=clone(existing||template);
+      if(/Nebenhand/i.test(template.name)){attack.baseAttack=82;attack.extraDamageEligible=false}
+      return attack;
+    });
+    previous.forEach(function(attack){if(!DEFAULTS.attacks.some(function(template){return template.name===attack.name}))value.attacks.push(attack)});
+    value.currentAttack=selected?Math.max(0,value.attacks.findIndex(function(attack){return attack.name===selected.name})):0;
+    value.schemaVersion=12;
     return value;
   }
   var state=normalizeExtraDamage(load());
@@ -275,6 +290,7 @@
     state.attacks=clone(DEFAULTS.attacks);state.currentAttack=0;state.advanceBeforeRoll=false;
     state.schemaVersion=11;
   }
+  state=upgradeLegendary(state);
   if(typeof state.criticalEnabled!=='boolean')state.criticalEnabled=true;
   save();
   function el(id){return document.getElementById(id)}
@@ -586,7 +602,7 @@
   el('clearHistory').onclick=function(){if(confirm('Gesamte Historie löschen?')){state.history=[];save();renderHistory()}};
   el('resetAll').onclick=function(){if(confirm('Alle Änderungen, Würfe und die Historie löschen?')){state=clone(DEFAULTS);save();renderAll();clearResults();clearHealing()}};
   el('exportButton').onclick=function(){var url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));var link=document.createElement('a');link.href=url;link.download='kampfwuerfler-sicherung.json';link.click();setTimeout(function(){URL.revokeObjectURL(url)},500)};
-  el('importFile').onchange=function(){var file=this.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var imported=JSON.parse(reader.result);if(!imported.attacks||!imported.attacks.length)throw new Error();state=normalizeExtraDamage(imported);save();renderAll();clearResults();clearHealing();alert('Sicherung wurde importiert.')}catch(err){alert('Diese Sicherungsdatei ist ungültig.')}};reader.readAsText(file)};
+  el('importFile').onchange=function(){var file=this.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var imported=JSON.parse(reader.result);if(!imported.attacks||!imported.attacks.length)throw new Error();state=upgradeLegendary(normalizeExtraDamage(imported));save();renderAll();clearResults();clearHealing();alert('Sicherung wurde importiert.')}catch(err){alert('Diese Sicherungsdatei ist ungültig.')}};reader.readAsText(file)};
   renderAll();clearResults();
   if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./service-worker.js')})}
 })();
