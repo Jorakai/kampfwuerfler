@@ -56,7 +56,7 @@
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10.2</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10.3</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -231,7 +231,7 @@
 
 <div class="bar" id="fightBar">
   <div class="bar-status"><b id="barAttackName"></b><span id="barPosition"></span><span class="detail" id="nextAttack"></span></div>
-  <button class="btn secondary" id="resetCounter">Counter 0</button>
+  <button class="btn secondary" id="resetCounter" aria-label="Counter zurücksetzen" title="Wurfzähler auf 0 und zurück zum ersten Angriff; Historie bleibt erhalten.">Counter 0</button>
   <button class="btn primary" id="rollAttack">Angriff würfeln</button>
 </div>
 
@@ -359,6 +359,7 @@
     el('criticalCard').classList.add('hidden');
   }
   function performAttack(){
+    cancelCounterReset();
     if(state.advanceBeforeRoll){state.currentAttack=(state.currentAttack+1)%state.attacks.length}
     var value=current(),attack=value.attack;
     var natural=randomDie(20),attackTotal=natural+value.attackBonus;
@@ -571,6 +572,7 @@
   function renderAll(){renderFight();renderHealing();renderHealth();renderHistory();renderSettings()}
   document.querySelectorAll('.tab').forEach(function(tab){
     tab.onclick=function(){
+      cancelCounterReset();
       document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
       document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
       tab.classList.add('active');el(tab.dataset.view).classList.add('active');
@@ -587,7 +589,25 @@
   el('rollBattleHealer').onclick=performBattleHealer;
   el('rollAttack').onclick=performAttack;
   el('attackSelect').onchange=function(){state.currentAttack=Number(this.value);state.advanceBeforeRoll=false;save();renderFight();clearResults()};
-  el('resetCounter').onclick=function(){if(confirm('Counter zurücksetzen und bei Angriff 1 beginnen?')){state.counter=0;state.currentAttack=0;state.advanceBeforeRoll=false;save();renderFight();clearResults()}};
+  var resetCounterPending=false,resetCounterTimer=null;
+  function cancelCounterReset(){
+    resetCounterPending=false;
+    if(resetCounterTimer!==null){clearTimeout(resetCounterTimer);resetCounterTimer=null}
+    el('resetCounter').textContent='Counter 0';
+    el('resetCounter').setAttribute('aria-label','Counter zurücksetzen');
+  }
+  el('resetCounter').onclick=function(){
+    if(!resetCounterPending){
+      resetCounterPending=true;
+      this.textContent='Ja, auf 0';
+      this.setAttribute('aria-label','Zurücksetzen bestätigen');
+      resetCounterTimer=setTimeout(cancelCounterReset,5000);
+      return;
+    }
+    cancelCounterReset();
+    state.counter=0;state.currentAttack=0;state.advanceBeforeRoll=false;
+    save();renderFight();clearResults();
+  };
   el('fightExpertise').onchange=function(){var value=Number(this.value);state.expertiseEnabled=value>0;if(value>0)state.expertiseValue=value;save();renderAll();clearResults()};
   el('fightPower').onchange=function(){var value=Number(this.value);state.powerEnabled=value>0;if(value>0)state.powerValue=value;save();renderAll();clearResults()};
   el('painLevel').onchange=function(){state.painAutomatic=this.value==='auto';if(!state.painAutomatic)state.painLevel=Math.max(0,Math.min(4,Math.floor(Number(this.value)||0)));save();renderFight();clearResults()};
@@ -604,7 +624,7 @@
   el('exportButton').onclick=function(){var url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));var link=document.createElement('a');link.href=url;link.download='kampfwuerfler-sicherung.json';link.click();setTimeout(function(){URL.revokeObjectURL(url)},500)};
   el('importFile').onchange=function(){var file=this.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var imported=JSON.parse(reader.result);if(!imported.attacks||!imported.attacks.length)throw new Error();state=upgradeLegendary(normalizeExtraDamage(imported));save();renderAll();clearResults();clearHealing();alert('Sicherung wurde importiert.')}catch(err){alert('Diese Sicherungsdatei ist ungültig.')}};reader.readAsText(file)};
   renderAll();clearResults();
-  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./service-worker.js')})}
+  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'})})}
 })();
 </script>
 </body>
