@@ -50,13 +50,18 @@
     .hp-summary{text-align:center}.hp-summary .big{font-size:2.5rem;margin:10px 0}.hp-max{font-size:1.15rem;color:var(--muted)}#health .btn{min-height:44px;font-size:.8rem}#hpFeedback:empty{display:none}#health .detail{line-height:1.4}
     #hpCurrentInput{display:inline-block;width:150px;max-width:60%;margin:0;padding:4px 8px;text-align:center;color:var(--green);font-size:2.1rem;font-weight:850}
     .hp-log-entry{padding:9px 0;border-top:1px solid var(--line);font-size:.82rem}.hp-undone{opacity:.55}.hp-undone>b{text-decoration:line-through}
+    .hp-values-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:7px;margin:10px 0}
+    .hp-values-form label{text-align:left;font-size:.75rem;min-width:0}
+    .hp-values-form #hpCurrentInput,.hp-values-form #maxHp{width:100%;max-width:none;min-height:44px;margin-top:4px;padding:7px 5px;font-size:1.4rem;font-weight:750;text-align:center}
+    .hp-values-form #maxHp{color:var(--text)}
+    #health .hp-values-form .btn{min-height:44px;padding:8px 7px;font-size:.75rem}
   </style>
 </head>
 <body>
 <div class="app">
   <header>
     <div class="head">
-      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10.3</div></div>
+      <div><h1>⚔️ Kampfwürfler</h1><div class="subtitle">Kaelira · Version 10.4</div></div>
       <div class="counter">Würfe: <span id="counter">0</span></div>
     </div>
     <nav class="tabs">
@@ -107,7 +112,11 @@
   <section id="health" class="view">
     <div class="card hp-summary">
       <div class="cap">Trefferpunkte</div>
-      <div class="big healingText"><input id="hpCurrentInput" type="number" step="1" aria-label="Aktuelle Trefferpunkte"><span class="hp-max"> / <span id="hpMaximum"></span></span></div>
+      <form id="hpValuesForm" class="hp-values-form">
+        <label>Aktuelle TP<input id="hpCurrentInput" type="number" step="1" inputmode="numeric" aria-label="Aktuelle Trefferpunkte" required></label>
+        <label>Maximale TP<input id="maxHp" type="number" min="1" step="1" inputmode="numeric" required></label>
+        <button class="btn secondary" type="submit">Speichern</button>
+      </form>
       <div id="hpPain" class="detail"></div>
       <div id="hpWoundInfo" class="detail"></div>
     </div>
@@ -124,11 +133,8 @@
       <summary>TP-Verlauf</summary><div id="hpLog"></div>
     </details>
     <details class="card combat-options">
-      <summary>Wunde, maximale TP und Schmerzgrenzen</summary>
-      <div class="grid2">
-        <label>Maximale TP<input id="maxHp" type="number" min="1" step="1" inputmode="numeric"></label>
-        <label>Schmerzvolle Wunde: fehlende TP<input id="woundHp" type="number" min="0" step="1" inputmode="numeric"></label>
-      </div>
+      <summary>Wunde und Schmerzgrenzen</summary>
+      <label>Schmerzvolle Wunde: fehlende TP<input id="woundHp" type="number" min="0" step="1" inputmode="numeric"></label>
       <p class="detail">Normale Heilung stellt die durch diese Wunde fehlenden TP nicht wieder her. Die Wunde heilt nur 1 TP pro Tag; trage das hier selbst ein.</p>
       <button class="btn secondary" id="healWound">1 TP der Wunde geheilt</button>
       <p id="hpThresholds" class="detail"></p>
@@ -502,7 +508,7 @@
   }
   function renderHealth(){
     var value=health();
-    el('hpCurrentInput').value=value.hp;el('hpMaximum').textContent=state.maxHp;
+    el('hpCurrentInput').value=value.hp;
     el('hpPain').textContent='Schmerzstufe '+value.pain+' · −'+value.pain+' AB / Schaden';
     el('hpWoundInfo').textContent='Schmerzvolle Wunde: −'+state.woundHp+' TP';
     el('maxHp').value=state.maxHp;el('woundHp').value=state.woundHp;
@@ -510,8 +516,9 @@
     el('undoHealth').disabled=!state.hpChanges.some(function(entry){return !entry.undone})&&!state.hpPrevious;
     el('hpLog').innerHTML=state.hpChanges.length?state.hpChanges.map(function(entry){
       var time=new Date(entry.time).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var maximum=entry.before.maxHp!==entry.after.maxHp?' · Maximum '+entry.before.maxHp+' → '+entry.after.maxHp+' TP':'';
       var wound=entry.before.woundHp!==entry.after.woundHp?' · Wunde '+entry.before.woundHp+' → '+entry.after.woundHp:'';
-      return '<div class="hp-log-entry'+(entry.undone?' hp-undone':'')+'"><b>'+escapeHtml(entry.label)+'</b> · '+entry.before.currentHp+' → '+entry.after.currentHp+' TP'+wound+'<div class="detail">'+time+(entry.undone?' · rückgängig gemacht':'')+'</div></div>';
+      return '<div class="hp-log-entry'+(entry.undone?' hp-undone':'')+'"><b>'+escapeHtml(entry.label)+'</b> · '+entry.before.currentHp+' → '+entry.after.currentHp+' TP'+maximum+wound+'<div class="detail">'+time+(entry.undone?' · rückgängig gemacht':'')+'</div></div>';
     }).join(''):'<p class="detail">Noch keine TP-Änderungen.</p>';
     el('healWound').disabled=state.woundHp===0;
   }
@@ -540,24 +547,40 @@
     field.value='';refreshHealth();field.focus();
   }
   function changeHealthStats(){
-    var max=Number(el('maxHp').value),wound=Number(el('woundHp').value);
+    var max=state.maxHp,wound=Number(el('woundHp').value);
     el('maxHp').setCustomValidity('');el('woundHp').setCustomValidity('');
     if(!Number.isSafeInteger(max)||max<1){el('maxHp').setCustomValidity('Bitte maximale TP ab 1 eingeben.');el('maxHp').reportValidity();return}
     if(el('woundHp').value.trim()===''||!Number.isSafeInteger(wound)||wound<0||wound>max){el('woundHp').setCustomValidity('Bitte fehlende Wunden-TP zwischen 0 und maximalen TP eingeben.');el('woundHp').reportValidity();return}
     rememberHealth('Wunde / maximale TP geändert');state.currentHp=Math.min(max,state.currentHp+state.woundHp-wound);state.maxHp=max;state.woundHp=wound;
     el('hpFeedback').textContent='TP-Werte aktualisiert.';refreshHealth();
   }
-  el('hpCurrentInput').onchange=function(){
-    var value=Number(this.value);this.setCustomValidity('');
-    if(this.value.trim()===''||!Number.isSafeInteger(value)||value>state.maxHp){this.setCustomValidity('Bitte ganze aktuelle TP bis '+state.maxHp+' eingeben.');this.reportValidity();return}
-    rememberHealth('Aktuelle TP manuell gesetzt');state.currentHp=value;el('hpFeedback').textContent='Aktuelle TP angepasst.';refreshHealth();
-  };
+  function saveHpValues(){
+    var currentField=el('hpCurrentInput'),maxField=el('maxHp');
+    var current=Number(currentField.value),max=Number(maxField.value);
+    currentField.setCustomValidity('');maxField.setCustomValidity('');
+    if(maxField.value.trim()===''||!Number.isSafeInteger(max)||max<1){
+      maxField.setCustomValidity('Bitte ganze maximale TP ab 1 eingeben.');maxField.reportValidity();return;
+    }
+    if(max<state.woundHp){
+      maxField.setCustomValidity('Die maximalen TP dürfen nicht kleiner als die fehlenden Wunden-TP ('+state.woundHp+') sein.');maxField.reportValidity();return;
+    }
+    if(currentField.value.trim()===''||!Number.isSafeInteger(current)||current>max){
+      currentField.setCustomValidity('Bitte ganze aktuelle TP bis '+max+' eingeben.');currentField.reportValidity();return;
+    }
+    if(current===state.currentHp&&max===state.maxHp){el('hpFeedback').textContent='TP-Werte sind gespeichert.';return}
+    rememberHealth(max!==state.maxHp?'Maximale / aktuelle TP geändert':'Aktuelle TP manuell gesetzt');
+    state.currentHp=current;state.maxHp=max;
+    el('hpFeedback').textContent='TP gespeichert: '+current+' von '+max+'.';
+    refreshHealth();
+  }
+  el('hpValuesForm').onsubmit=function(event){event.preventDefault();saveHpValues()};
   el('hpCurrentInput').oninput=function(){this.setCustomValidity('')};
   el('takeDamage').onclick=function(){applyHealth(false)};
   el('receiveHealing').onclick=function(){applyHealth(true)};
   el('hpAmount').oninput=function(){this.setCustomValidity('')};
   el('hpAmount').addEventListener('keydown',function(event){if(event.key==='Enter'){event.preventDefault();applyHealth(false)}});
-  el('maxHp').onchange=changeHealthStats;el('woundHp').onchange=changeHealthStats;
+  el('maxHp').oninput=function(){this.setCustomValidity('');el('hpCurrentInput').setCustomValidity('')};
+  el('woundHp').onchange=changeHealthStats;
   el('healWound').onclick=function(){if(state.woundHp>0){rememberHealth('Wunde: 1 TP geheilt');state.woundHp--;state.currentHp=Math.min(state.maxHp,state.currentHp+1);el('hpFeedback').textContent='1 TP der schmerzvollen Wunde wiederhergestellt.';refreshHealth()}};
   el('undoHealth').onclick=function(){
     var entry=state.hpChanges.find(function(item){return !item.undone});
